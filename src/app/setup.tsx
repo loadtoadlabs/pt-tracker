@@ -229,7 +229,6 @@ export default function SetupScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="numeric"
-                placeholder="36"
                 value={profile.ageOnTestDate}
                 onChangeText={(value) => updateProfile('ageOnTestDate', value)}
               />
@@ -251,7 +250,6 @@ export default function SetupScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="numeric"
-                placeholder="67"
                 value={profile.heightInches}
                 onChangeText={(value) => updateProfile('heightInches', value)}
               />
@@ -261,7 +259,6 @@ export default function SetupScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="decimal-pad"
-                placeholder="225"
                 value={profile.weightLb}
                 onChangeText={(value) => updateProfile('weightLb', value)}
               />
@@ -271,7 +268,6 @@ export default function SetupScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="decimal-pad"
-                placeholder="38.5"
                 value={profile.waistInches}
                 onChangeText={(value) => updateProfile('waistInches', value)}
               />
@@ -286,7 +282,6 @@ export default function SetupScreen() {
             <Field label="PFA date">
               <TextInput
                 style={styles.input}
-                placeholder="2026-10-15"
                 autoCapitalize="none"
                 value={profile.testDate}
                 onChangeText={(value) => updateProfile('testDate', value)}
@@ -349,7 +344,6 @@ export default function SetupScreen() {
                     <TextInput
                       style={styles.input}
                       keyboardType="numeric"
-                      placeholder="5"
                       value={profile.baseline.hamrLevel}
                       onChangeText={(value) => updateBaseline('hamrLevel', value)}
                     />
@@ -358,7 +352,6 @@ export default function SetupScreen() {
                     <TextInput
                       style={styles.input}
                       keyboardType="numeric"
-                      placeholder="6"
                       value={profile.baseline.hamrShuttle}
                       onChangeText={(value) => updateBaseline('hamrShuttle', value)}
                     />
@@ -371,7 +364,6 @@ export default function SetupScreen() {
               <Field label="Current 2-mile time">
                 <TimeInput
                   value={profile.baseline.twoMileRunTime}
-                  placeholder="1530 → 15:30"
                   onChange={(value) => updateBaseline('twoMileRunTime', value)}
                 />
               </Field>
@@ -381,7 +373,6 @@ export default function SetupScreen() {
               <Field label="Current 2 km walk time">
                 <TimeInput
                   value={profile.baseline.twoKmWalkTime}
-                  placeholder="1800 → 18:00"
                   onChange={(value) => updateBaseline('twoKmWalkTime', value)}
                 />
               </Field>
@@ -391,7 +382,6 @@ export default function SetupScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="numeric"
-                placeholder="25"
                 value={profile.baseline.strengthReps}
                 onChangeText={(value) => updateBaseline('strengthReps', value)}
               />
@@ -401,7 +391,6 @@ export default function SetupScreen() {
               <Field label="Forearm plank time">
                 <TimeInput
                   value={profile.baseline.plankTime}
-                  placeholder="115 → 1:15"
                   onChange={(value) => updateBaseline('plankTime', value)}
                 />
               </Field>
@@ -410,7 +399,6 @@ export default function SetupScreen() {
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"
-                  placeholder="35"
                   value={profile.baseline.coreReps}
                   onChangeText={(value) => updateBaseline('coreReps', value)}
                 />
@@ -575,12 +563,11 @@ function Field({ label, children, flex = false }: { label: string; children: Rea
   );
 }
 
-function TimeInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+function TimeInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <TextInput
       style={styles.input}
       keyboardType="numeric"
-      placeholder={placeholder}
       value={value}
       onChangeText={onChange}
       onBlur={() => {

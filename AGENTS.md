@@ -24,6 +24,8 @@ The app helps users prepare for their physical fitness assessment through person
 
 The home screen must prioritize **Today’s Workout** above analytics and dashboards.
 
+Keep empty measurement and result fields visually blank. Do not use sample numbers or dates as placeholders or numeric examples in entry hints; users mistake them for saved data. Use field labels and format guidance instead.
+
 Body composition is a **weekly check-in**, prompted on the user’s final training day of the week; do not encourage daily waist/weight logging.
 
 The setup/profile must capture **mobility limitations or movement restrictions**, and the training engine should substitute exercises while preserving the intended training effect.

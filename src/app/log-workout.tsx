@@ -89,7 +89,7 @@ export default function LogWorkoutScreen() {
     if (profile.coreComponent === 'plank') {
       const formatted = formatTimeShorthand(coreValue);
       if (formatted === null || formatted === '') {
-        return showError('Enter a valid plank time. Example: 50 or 115.');
+        return showError('Enter a valid plank time in minutes and seconds.');
       }
       formattedCore = formatted;
       setCoreValue(formatted);
@@ -176,7 +176,6 @@ export default function LogWorkoutScreen() {
           <TextInput
             style={styles.input}
             keyboardType="numeric"
-            placeholder="25"
             value={strengthReps}
             onChangeText={setStrengthReps}
           />
@@ -192,7 +191,6 @@ export default function LogWorkoutScreen() {
           <TextInput
             style={styles.input}
             keyboardType="numeric"
-            placeholder={profile.coreComponent === 'plank' ? '115 → 1:15' : '35'}
             value={coreValue}
             onChangeText={setCoreValue}
             onBlur={() => {
@@ -202,7 +200,7 @@ export default function LogWorkoutScreen() {
             }}
           />
           {profile.coreComponent === 'plank' && (
-            <Text style={styles.helper}>Shorthand works: 50 = 0:50, 115 = 1:15, 90 = 1:30.</Text>
+            <Text style={styles.helper}>Enter minutes and seconds. The colon is optional.</Text>
           )}
         </View>
 
@@ -217,7 +215,6 @@ export default function LogWorkoutScreen() {
                   <TextInput
                     style={styles.input}
                     keyboardType="numeric"
-                    placeholder="5"
                     value={hamrLevel}
                     onChangeText={setHamrLevel}
                   />
@@ -227,7 +224,6 @@ export default function LogWorkoutScreen() {
                   <TextInput
                     style={styles.input}
                     keyboardType="numeric"
-                    placeholder="6"
                     value={hamrShuttle}
                     onChangeText={setHamrShuttle}
                   />
@@ -240,7 +236,6 @@ export default function LogWorkoutScreen() {
               <TextInput
                 style={styles.input}
                 keyboardType="numeric"
-                placeholder="1530 → 15:30"
                 value={cardioTime}
                 onChangeText={setCardioTime}
                 onBlur={() => {
