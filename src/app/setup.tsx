@@ -283,11 +283,13 @@ export default function SetupScreen() {
               <TextInput
                 style={styles.input}
                 autoCapitalize="none"
+                keyboardType="number-pad"
+                accessibilityLabel="PFA date, year month day"
                 value={profile.testDate}
-                onChangeText={(value) => updateProfile('testDate', value)}
+                onChangeText={(value) => updateProfile('testDate', formatDateInput(value))}
               />
             </Field>
-            <Text style={styles.helper}>Use YYYY-MM-DD for now. A calendar picker comes later.</Text>
+            <Text style={styles.helper}>Enter year, month, then day. Hyphens are added automatically.</Text>
           </View>
         )}
 
@@ -641,6 +643,13 @@ function formatTimeShorthand(value: string) {
 
 function isValidTime(value: string) {
   return /^\d+:[0-5]\d$/.test(value.trim());
+}
+
+function formatDateInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6, 8)]
+    .filter(Boolean)
+    .join('-');
 }
 
 function isFutureDate(value: string) {
