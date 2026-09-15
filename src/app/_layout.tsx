@@ -19,7 +19,10 @@ export default function RootLayout() {
           options={{ headerShown: false, gestureEnabled: false }}
         />
         <Stack.Screen name="log-workout" options={{ title: 'Log Workout' }} />
+        <Stack.Screen name="active-workout" options={{ title: 'Today’s Workout' }} />
         <Stack.Screen name="workout-history" options={{ title: 'Workout History' }} />
+        <Stack.Screen name="weekly-check-in" options={{ title: 'Weekly Check-In' }} />
+        <Stack.Screen name="achievements" options={{ title: 'Achievements' }} />
       </Stack>
     </ThemeProvider>
   );

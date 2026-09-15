@@ -112,6 +112,16 @@ After two clean successful sessions:
 
 After repeated misses, hold or slightly reduce the target instead of forcing progression.
 
+### Current app integration
+
+The home screen and active-workout flow derive targets from saved session outcomes. Users must explicitly mark a block as completed cleanly for it to earn progress. Two clean completions at the same target earn one adjustment; the next adjustment requires two completions at the new target. Two missed targets reduce the current target.
+
+Comparisons require the same exercise prescription, session kind, training phase, baseline, selected events, equipment, and restrictions. Skipped blocks, unconfirmed completions, and reduced or recovery sessions break the streak. Manual legacy logs do not establish clean completions. Mock tests and taper sessions do not receive automatic progression.
+
+Automatic changes currently cover numeric rep targets, plank holds, interval counts, and easy walking duration. Quality intervals remain capped at four; technique intervals retain their existing ceiling. Narrative controlled HAMR practice has no numeric shuttle target yet, so the app does not automatically add shuttles. Unresisted practice does not earn loaded-strength progression.
+
+Regression checks: `node --test scripts/test-training-substitutions.cjs scripts/test-workout-session.cjs scripts/test-training-progression.cjs`.
+
 ## Readiness
 
 The active-workout flow will use a simple readiness check for energy, soreness, and pain.

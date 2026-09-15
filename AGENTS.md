@@ -48,9 +48,9 @@ Do not invent official Air Force scoring tables or policy requirements. Verify a
 
 ## Data and implementation status
 
-Profiles and workout history currently use local AsyncStorage. Preserve existing saved-data compatibility when changing data models.
+Profiles, workout history, and weekly body check-ins currently use local AsyncStorage. Weekly measurements are stored separately from workout results and onboarding measurements. Preserve existing saved-data compatibility when changing data models.
 
-Readiness and progression helpers exist, but their integration into the workout flow is incomplete. Verify actual usage before describing a feature as implemented.
+The active-workout flow applies readiness rules and saves block outcomes. Automatic progression uses explicit numeric targets and confirmed clean completions from comparable sessions. Narrative HAMR practice does not yet have a numeric shuttle target. Verify actual usage before describing a feature as implemented.
 
 Some Expo starter screens, components, assets, and README content remain. They do not define the intended product.
 

@@ -30,9 +30,16 @@ export type WorkoutBlock = {
   prescription: string;
   coaching?: string;
   purpose?: string;
+  progression?: {
+    signature: string;
+    value: number;
+    canIncrease?: boolean;
+    reason: string;
+  };
 };
 
 export type PlannedWorkout = {
+  progressionContext?: string;
   day: TrainingDay;
   type: TrainingDayType;
   kind: TrainingSessionKind;
@@ -50,4 +57,24 @@ export type DailyReadiness = {
   energy: 1 | 2 | 3 | 4 | 5;
   soreness: 1 | 2 | 3 | 4 | 5;
   pain: 1 | 2 | 3 | 4 | 5;
+};
+
+export type BlockOutcome = {
+  blockId: string;
+  status: 'completed' | 'missed' | 'skipped';
+  actual: string;
+  clean?: boolean;
+};
+
+export type SessionRecord = {
+  id: number;
+  date: string;
+  sessionTitle: string;
+  sessionKind: TrainingSessionKind;
+  readiness: DailyReadiness;
+  readinessAction: 'normal' | 'reduce' | 'recovery';
+  plannedWorkout: PlannedWorkout;
+  performedWorkout: PlannedWorkout;
+  outcomes: BlockOutcome[];
+  notes: string;
 };

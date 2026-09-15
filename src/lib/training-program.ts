@@ -444,7 +444,7 @@ function coreQualityBlock(profile: UserProfile, phase: TrainingPhase): WorkoutBl
     return {
       id: 'pfa-core-quality',
       title: 'Forearm Plank',
-      prescription: `3 × ${base} sec. When all holds are clean, add 5 sec per set the following week.`,
+      prescription: `3 × ${base} sec. Keep every hold clean and submaximal.`,
       coaching: 'Steady breathing. Stop for sharp back or shoulder pain.',
       purpose: 'Simple progressive overload without a max hold.',
     };

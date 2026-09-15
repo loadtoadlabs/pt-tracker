@@ -11,10 +11,12 @@ import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { loadUserProfile } from '@/lib/profile-storage';
-import { buildPlannedWorkout } from '@/lib/training-program';
+import { buildAdaptiveWorkout } from '@/lib/training-progression';
 import { formatTrainingDay, getTodayTrainingDay } from '@/lib/training-schedule';
 import type { UserProfile } from '@/types/profile';
-import type { PlannedWorkout } from '@/types/training';
+import type { PlannedWorkout, BlockOutcome } from '@/types/training';
+import { loadBodyCheckIns } from '@/lib/body-check-in-storage';
+import { isCheckInDue, type BodyCheckIn } from '@/lib/body-check-in';
 
 type Workout = {
   id: number;
@@ -27,12 +29,16 @@ type Workout = {
   hamr?: string;
   weight?: string;
   notes?: string;
+  sessionTitle?: string;
+  outcomes?: BlockOutcome[];
 };
 
 export default function HomeScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [lastWorkout, setLastWorkout] = useState<Workout | null>(null);
   const [workoutCount, setWorkoutCount] = useState(0);
+  const [history, setHistory] = useState<unknown[]>([]);
+  const [checkIns, setCheckIns] = useState<BodyCheckIn[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -56,9 +62,13 @@ export default function HomeScreen() {
 
       const savedWorkouts = await AsyncStorage.getItem('workouts');
       const workouts: Workout[] = savedWorkouts ? JSON.parse(savedWorkouts) : [];
+      if (!Array.isArray(workouts)) throw new Error('Could not read workout history.');
+      setHistory(workouts);
 
       setWorkoutCount(workouts.length);
       setLastWorkout(workouts.length > 0 ? workouts[workouts.length - 1] : null);
+      // A check-in storage error must not hide the workout or suggest a duplicate entry.
+      setCheckIns(await loadBodyCheckIns().catch(() => null));
     } catch (error) {
       console.log('Could not load home screen:', error);
     } finally {
@@ -76,7 +86,7 @@ export default function HomeScreen() {
   }
 
   const today = getTodayTrainingDay(profile.trainingDays);
-  const workout = today ? buildPlannedWorkout(profile, today) : null;
+  const workout = today ? buildAdaptiveWorkout(profile, today, history) : null;
   const daysRemaining = getDaysUntil(profile.testDate);
 
   return (
@@ -101,6 +111,14 @@ export default function HomeScreen() {
 
       <TodayWorkoutCard workout={workout} />
 
+      {checkIns && isCheckInDue(profile.trainingDays, checkIns) && <View style={styles.dashboard}>
+        <Text style={styles.dashboardTitle}>Weekly Check-In</Text>
+        <Text style={styles.lastWorkout}>It’s your final training day this week. Record your weight and optional waist measurement.</Text>
+        <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={() => router.push('/weekly-check-in')}>
+          <Text style={styles.secondaryButtonText}>Open Weekly Check-In</Text>
+        </Pressable>
+      </View>}
+
       <Text style={styles.sectionTitle}>Progress</Text>
 
       <View style={styles.dashboard}>
@@ -115,6 +133,14 @@ export default function HomeScreen() {
               Last logged workout • {new Date(lastWorkout.date).toLocaleDateString()}
             </Text>
 
+            {lastWorkout.outcomes ? <>
+              <Text style={styles.lastWorkout}>{lastWorkout.sessionTitle}</Text>
+              <View style={styles.statsRow}>
+                <StatCard value={String(lastWorkout.outcomes.filter((o) => o.status === 'completed').length)} label="Blocks completed" />
+                <StatCard value={String(lastWorkout.outcomes.filter((o) => o.status === 'missed').length)} label="Missed targets" />
+                <StatCard value={String(lastWorkout.outcomes.filter((o) => o.status === 'skipped').length)} label="Skipped" />
+              </View>
+            </> : <>
             <View style={styles.statsRow}>
               <StatCard
                 value={lastWorkout.strengthResult || lastWorkout.pushUps || '-'}
@@ -132,6 +158,7 @@ export default function HomeScreen() {
               />
               <StatCard value={phaseLabel(workout?.phase)} label="Training Phase" />
             </View>
+            </>}
           </>
         ) : (
           <Text style={styles.noData}>Your progress dashboard will fill in as you train.</Text>
@@ -146,6 +173,9 @@ export default function HomeScreen() {
           <Text style={styles.secondaryButtonText}>History</Text>
         </Pressable>
       </View>
+      <Pressable accessibilityRole="button" style={styles.secondaryButton} onPress={() => router.push('/achievements')}>
+        <Text style={styles.secondaryButtonText}>Achievements</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -194,6 +224,7 @@ function TodayWorkoutCard({ workout }: { workout: PlannedWorkout | null }) {
             <View style={styles.previewCopy}>
               <Text style={styles.previewTitle}>{block.title}</Text>
               <Text style={styles.previewPrescription}>{block.prescription}</Text>
+              {block.progression && <Text style={styles.previewPrescription}>{block.progression.reason}</Text>}
             </View>
           </View>
         ))}
@@ -205,7 +236,7 @@ function TodayWorkoutCard({ workout }: { workout: PlannedWorkout | null }) {
         </View>
       )}
 
-      <Pressable style={styles.startButton} onPress={() => router.push('/log-workout')}>
+      <Pressable style={styles.startButton} onPress={() => router.push('/active-workout')}>
         <Text style={styles.startButtonText}>Start Today's Workout</Text>
       </Pressable>
     </View>

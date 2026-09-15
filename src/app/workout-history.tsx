@@ -7,8 +7,10 @@ import {
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 
 import type { CardioComponent, CoreComponent, StrengthComponent } from '@/types/profile';
+import type { SessionRecord } from '@/types/training';
 
 type Workout = {
   id: number;
@@ -25,6 +27,10 @@ type Workout = {
   hamr?: string;
   weight?: string;
   notes?: string;
+  readiness?: SessionRecord['readiness'];
+  readinessAction?: SessionRecord['readinessAction'];
+  performedWorkout?: SessionRecord['performedWorkout'];
+  outcomes?: SessionRecord['outcomes'];
 };
 
 export default function WorkoutHistoryScreen() {
@@ -59,6 +65,10 @@ export default function WorkoutHistoryScreen() {
       <View style={styles.shell}>
         <Text style={styles.eyebrow}>LOADTOAD PT</Text>
         <Text style={styles.title}>Workout History</Text>
+        <Pressable accessibilityRole="button" style={styles.card} onPress={() => router.push('/weekly-check-in')}>
+          <Text style={styles.sessionTitle}>Weekly Check-In History</Text>
+          <Text style={styles.notes}>View your weekly weight and waist entries.</Text>
+        </Pressable>
 
         {workouts.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -71,6 +81,17 @@ export default function WorkoutHistoryScreen() {
               <Text style={styles.date}>{new Date(workout.date).toLocaleString()}</Text>
               {workout.sessionTitle && <Text style={styles.sessionTitle}>{workout.sessionTitle}</Text>}
 
+              {workout.outcomes && workout.performedWorkout ? <>
+                <Text style={styles.notes}>Readiness: {workout.readinessAction} · Energy {workout.readiness?.energy}/5 · Soreness {workout.readiness?.soreness}/5 · Pain {workout.readiness?.pain}/5</Text>
+                {workout.outcomes.map((outcome) => {
+                  const block = workout.performedWorkout?.blocks.find((b) => b.id === outcome.blockId);
+                  return <View key={outcome.blockId}>
+                    <MetricRow label={block?.title || outcome.blockId} value={outcome.status === 'missed' ? 'Missed target' : outcome.clean ? 'Completed cleanly' : outcome.status} />
+                    <Text style={styles.notes}>{block?.prescription}</Text>
+                    {outcome.actual ? <Text style={styles.notes}>Actual: {outcome.actual}</Text> : null}
+                  </View>;
+                })}
+              </> : <>
               <MetricRow
                 label={strengthLabel(workout.strengthComponent)}
                 value={workout.strengthResult || workout.pushUps || '-'}
@@ -83,6 +104,7 @@ export default function WorkoutHistoryScreen() {
                 label={cardioLabel(workout.cardioComponent)}
                 value={workout.cardioResult || workout.hamr || '-'}
               />
+              </>}
 
               {workout.notes ? <Text style={styles.notes}>Notes: {workout.notes}</Text> : null}
 
