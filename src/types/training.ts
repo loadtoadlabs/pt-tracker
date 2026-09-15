@@ -2,7 +2,52 @@ import type { TrainingDay } from '@/types/profile';
 
 export type TrainingDayType = 'pfa' | 'strength';
 
+export type TrainingSessionKind =
+  | 'pfa-technique'
+  | 'strength-a'
+  | 'pfa-controlled'
+  | 'strength-b'
+  | 'pfa-quality';
+
+export type TrainingPhase = 'foundation' | 'build' | 'sharpen' | 'taper';
+
+export type SessionIntensity =
+  | 'easy'
+  | 'moderate'
+  | 'moderate-hard'
+  | 'hard-controlled'
+  | 'test';
+
 export type ScheduledTrainingDay = {
   day: TrainingDay;
   type: TrainingDayType;
+  kind: TrainingSessionKind;
+};
+
+export type WorkoutBlock = {
+  id: string;
+  title: string;
+  prescription: string;
+  coaching?: string;
+  purpose?: string;
+};
+
+export type PlannedWorkout = {
+  day: TrainingDay;
+  type: TrainingDayType;
+  kind: TrainingSessionKind;
+  phase: TrainingPhase;
+  title: string;
+  subtitle: string;
+  intensity: SessionIntensity;
+  estimatedMinutes: number;
+  isMock: boolean;
+  blocks: WorkoutBlock[];
+  guardrails: string[];
+};
+
+export type DailyReadiness = {
+  energy: 1 | 2 | 3 | 4 | 5;
+  soreness: 1 | 2 | 3 | 4 | 5;
+  pain: 1 | 2 | 3 | 4 | 5;
 };
