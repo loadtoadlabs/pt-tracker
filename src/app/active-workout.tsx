@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -21,6 +22,13 @@ const SESSION_KEY = 'loadtoad.training-sessions.v1';
 
 type BlockStatus = 'pending' | 'complete' | 'skipped';
 
+type BlockLog = {
+  result: string;
+  notes: string;
+  modified: boolean;
+  modification: string;
+};
+
 type StoredTrainingSession = {
   id: number;
   date: string;
@@ -32,6 +40,15 @@ type StoredTrainingSession = {
   completedBlocks: number;
   skippedBlocks: number;
   totalBlocks: number;
+  blocks: Array<{
+    id: string;
+    title: string;
+    status: BlockStatus;
+    result: string;
+    notes: string;
+    modified: boolean;
+    modification: string;
+  }>;
 };
 
 export default function ActiveWorkoutScreen() {
@@ -39,10 +56,12 @@ export default function ActiveWorkoutScreen() {
   const [loading, setLoading] = useState(true);
   const [started, setStarted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
   const [energy, setEnergy] = useState<DailyReadiness['energy'] | null>(null);
   const [soreness, setSoreness] = useState<DailyReadiness['soreness'] | null>(null);
   const [pain, setPain] = useState<DailyReadiness['pain'] | null>(null);
   const [blockStatus, setBlockStatus] = useState<Record<string, BlockStatus>>({});
+  const [blockLogs, setBlockLogs] = useState<Record<string, BlockLog>>({});
 
   useEffect(() => {
     loadUserProfile()
@@ -93,21 +112,49 @@ export default function ActiveWorkoutScreen() {
 
   function setStatus(blockId: string, status: BlockStatus) {
     setBlockStatus((current) => ({ ...current, [blockId]: status }));
+    setMessage('');
+  }
+
+  function updateBlockLog(blockId: string, patch: Partial<BlockLog>) {
+    setBlockLogs((current) => ({
+      ...current,
+      [blockId]: {
+        result: '',
+        notes: '',
+        modified: false,
+        modification: '',
+        ...(current[blockId] ?? {}),
+        ...patch,
+      },
+    }));
   }
 
   function beginWorkout() {
     if (!readiness) return;
+    setMessage('');
     setStarted(true);
   }
 
   async function finishWorkout() {
     if (!readiness || !readinessDecision) return;
 
+    if (readinessDecision.action !== 'recovery') {
+      const unresolved = workout.blocks.filter(
+        (block) => (blockStatus[block.id] ?? 'pending') === 'pending'
+      );
+
+      if (unresolved.length > 0) {
+        setMessage(`Mark every block complete or skipped before finishing. ${unresolved.length} left.`);
+        return;
+      }
+    }
+
     const statuses = workout.blocks.map((block) => blockStatus[block.id] ?? 'pending');
     const completedBlocks = statuses.filter((status) => status === 'complete').length;
     const skippedBlocks = statuses.filter((status) => status === 'skipped').length;
 
     setSaving(true);
+    setMessage('');
 
     try {
       const existing = await AsyncStorage.getItem(SESSION_KEY);
@@ -124,18 +171,34 @@ export default function ActiveWorkoutScreen() {
         completedBlocks,
         skippedBlocks,
         totalBlocks: workout.blocks.length,
+        blocks: workout.blocks.map((block) => {
+          const log = blockLogs[block.id];
+          return {
+            id: block.id,
+            title: block.title,
+            status:
+              readinessDecision.action === 'recovery'
+                ? 'skipped'
+                : blockStatus[block.id] ?? 'pending',
+            result: log?.result.trim() ?? '',
+            notes: log?.notes.trim() ?? '',
+            modified: log?.modified ?? false,
+            modification: log?.modification.trim() ?? '',
+          };
+        }),
       });
 
       await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
       router.replace('/');
     } catch (error) {
       console.log('Could not save training session:', error);
+      setMessage('Could not save this session. Try again.');
       setSaving(false);
     }
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.page}>
+    <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
       <View style={styles.shell}>
         <Text style={styles.eyebrow}>LOADTOAD PT</Text>
         <Text style={styles.title}>{workout.title}</Text>
@@ -203,6 +266,12 @@ export default function ActiveWorkoutScreen() {
               <View style={styles.blocksList}>
                 {workout.blocks.map((block, index) => {
                   const status = blockStatus[block.id] ?? 'pending';
+                  const log = blockLogs[block.id] ?? {
+                    result: '',
+                    notes: '',
+                    modified: false,
+                    modification: '',
+                  };
 
                   return (
                     <View key={block.id} style={styles.blockCard}>
@@ -218,6 +287,42 @@ export default function ActiveWorkoutScreen() {
 
                       {block.coaching && <Text style={styles.coaching}>Cue: {block.coaching}</Text>}
                       {block.purpose && <Text style={styles.purpose}>Why: {block.purpose}</Text>}
+
+                      <View style={styles.logPanel}>
+                        <Text style={styles.logLabel}>What you actually did — optional</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={log.result}
+                          onChangeText={(value) => updateBlockLog(block.id, { result: value })}
+                          placeholder="Example: 3 x 10 @ 180 lb, 20 min, or 1:15"
+                        />
+
+                        <Pressable
+                          style={[styles.modifyButton, log.modified && styles.modifyButtonSelected]}
+                          onPress={() => updateBlockLog(block.id, { modified: !log.modified })}
+                        >
+                          <Text style={[styles.modifyButtonText, log.modified && styles.modifyButtonTextSelected]}>
+                            {log.modified ? 'Modified ✓' : 'Modify / Substitute'}
+                          </Text>
+                        </Pressable>
+
+                        {log.modified && (
+                          <TextInput
+                            style={styles.input}
+                            value={log.modification}
+                            onChangeText={(value) => updateBlockLog(block.id, { modification: value })}
+                            placeholder="What did you use instead?"
+                          />
+                        )}
+
+                        <TextInput
+                          style={[styles.input, styles.notesInput]}
+                          value={log.notes}
+                          onChangeText={(value) => updateBlockLog(block.id, { notes: value })}
+                          placeholder="Notes — optional"
+                          multiline
+                        />
+                      </View>
 
                       <View style={styles.blockActions}>
                         <Pressable
@@ -247,6 +352,8 @@ export default function ActiveWorkoutScreen() {
                 <Text key={rule} style={styles.guardrailText}>• {rule}</Text>
               ))}
             </View>
+
+            {message !== '' && <Text style={styles.errorMessage}>{message}</Text>}
 
             <Pressable style={styles.primaryButton} onPress={finishWorkout} disabled={saving}>
               <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Finish Session'}</Text>
@@ -515,6 +622,50 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 9,
   },
+  logPanel: {
+    backgroundColor: '#F7F9F8',
+    borderRadius: 10,
+    padding: 11,
+    marginTop: 12,
+    gap: 8,
+  },
+  logLabel: {
+    color: '#4E5C54',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#C6D0CA',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 9,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  notesInput: {
+    minHeight: 68,
+    textAlignVertical: 'top',
+  },
+  modifyButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#B9C5BE',
+    borderRadius: 9,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
+  modifyButtonSelected: {
+    backgroundColor: '#ECEEFA',
+    borderColor: '#AEB5D8',
+  },
+  modifyButtonText: {
+    color: '#58655D',
+    fontWeight: '800',
+  },
+  modifyButtonTextSelected: {
+    color: '#4C5788',
+  },
   blockActions: {
     flexDirection: 'row',
     gap: 8,
@@ -588,6 +739,12 @@ const styles = StyleSheet.create({
     color: '#766432',
     lineHeight: 19,
     marginTop: 2,
+  },
+  errorMessage: {
+    color: '#A62B2B',
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 14,
   },
   primaryButton: {
     backgroundColor: '#2E8B57',
