@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -225,15 +225,12 @@ export default function SetupScreen() {
             <Text style={styles.heading}>Start with the basics</Text>
             <Text style={styles.bodyCopy}>We use this for scoring, body-composition trends, and training scale.</Text>
 
-            <Field label="Age on your test date">
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                placeholder="36"
-                value={profile.ageOnTestDate}
-                onChangeText={(value) => updateProfile('ageOnTestDate', value)}
-              />
-            </Field>
+            <NumberField
+              label="Age on your test date"
+              value={profile.ageOnTestDate}
+              helper="Example: 36"
+              onChange={(value) => updateProfile('ageOnTestDate', value)}
+            />
 
             <Text style={styles.label}>Scoring standard</Text>
             <View style={styles.choiceRow}>
@@ -247,35 +244,28 @@ export default function SetupScreen() {
               ))}
             </View>
 
-            <Field label="Height (inches)">
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                placeholder="67"
-                value={profile.heightInches}
-                onChangeText={(value) => updateProfile('heightInches', value)}
-              />
-            </Field>
+            <NumberField
+              label="Height (inches)"
+              value={profile.heightInches}
+              helper="Example: 67"
+              onChange={(value) => updateProfile('heightInches', value)}
+            />
 
-            <Field label="Current weight (lb)">
-              <TextInput
-                style={styles.input}
-                keyboardType="decimal-pad"
-                placeholder="225"
-                value={profile.weightLb}
-                onChangeText={(value) => updateProfile('weightLb', value)}
-              />
-            </Field>
+            <NumberField
+              label="Current weight (lb)"
+              value={profile.weightLb}
+              helper="Example: 225"
+              decimal
+              onChange={(value) => updateProfile('weightLb', value)}
+            />
 
-            <Field label="Current waist (inches) — optional">
-              <TextInput
-                style={styles.input}
-                keyboardType="decimal-pad"
-                placeholder="38.5"
-                value={profile.waistInches}
-                onChangeText={(value) => updateProfile('waistInches', value)}
-              />
-            </Field>
+            <NumberField
+              label="Current waist (inches) — optional"
+              value={profile.waistInches}
+              helper="Example: 38.5"
+              decimal
+              onChange={(value) => updateProfile('waistInches', value)}
+            />
           </View>
         )}
 
@@ -283,16 +273,14 @@ export default function SetupScreen() {
           <View>
             <Text style={styles.heading}>When do you test?</Text>
             <Text style={styles.bodyCopy}>The exact date controls progression, mock-test timing, and the taper.</Text>
-            <Field label="PFA date">
+            <Field label="PFA date" helper="Example: 2026-10-15 (YYYY-MM-DD)">
               <TextInput
                 style={styles.input}
-                placeholder="2026-10-15"
                 autoCapitalize="none"
                 value={profile.testDate}
                 onChangeText={(value) => updateProfile('testDate', value)}
               />
             </Field>
-            <Text style={styles.helper}>Use YYYY-MM-DD for now. A calendar picker comes later.</Text>
           </View>
         )}
 
@@ -339,82 +327,71 @@ export default function SetupScreen() {
         {step === 3 && (
           <View>
             <Text style={styles.heading}>Set your baseline</Text>
-            <Text style={styles.bodyCopy}>Use your best recent honest result. LoadToad uses it to set submaximal work targets instead of maxing you out every day.</Text>
+            <Text style={styles.bodyCopy}>Use your best recent honest result. LoadToad uses it to set submaximal targets instead of maxing you out every day.</Text>
 
             {profile.cardioComponent === 'hamr' && (
               <>
                 <Text style={styles.sectionLabel}>20m HAMR</Text>
                 <View style={styles.twoColumn}>
-                  <Field label="Level" flex>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      placeholder="5"
+                  <View style={styles.flexField}>
+                    <NumberField
+                      label="Level"
                       value={profile.baseline.hamrLevel}
-                      onChangeText={(value) => updateBaseline('hamrLevel', value)}
+                      helper="Example: 4"
+                      onChange={(value) => updateBaseline('hamrLevel', value)}
                     />
-                  </Field>
-                  <Field label="Shuttle" flex>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      placeholder="6"
+                  </View>
+                  <View style={styles.flexField}>
+                    <NumberField
+                      label="Shuttle"
                       value={profile.baseline.hamrShuttle}
-                      onChangeText={(value) => updateBaseline('hamrShuttle', value)}
+                      helper="Example: 1"
+                      onChange={(value) => updateBaseline('hamrShuttle', value)}
                     />
-                  </Field>
+                  </View>
                 </View>
               </>
             )}
 
             {profile.cardioComponent === 'two-mile-run' && (
-              <Field label="Current 2-mile time">
-                <TimeInput
-                  value={profile.baseline.twoMileRunTime}
-                  placeholder="1530 → 15:30"
-                  onChange={(value) => updateBaseline('twoMileRunTime', value)}
-                />
-              </Field>
+              <TimeField
+                label="Current 2-mile time"
+                value={profile.baseline.twoMileRunTime}
+                helper="Example: enter 1530 and it becomes 15:30"
+                onChange={(value) => updateBaseline('twoMileRunTime', value)}
+              />
             )}
 
             {profile.cardioComponent === 'two-km-walk' && (
-              <Field label="Current 2 km walk time">
-                <TimeInput
-                  value={profile.baseline.twoKmWalkTime}
-                  placeholder="1800 → 18:00"
-                  onChange={(value) => updateBaseline('twoKmWalkTime', value)}
-                />
-              </Field>
+              <TimeField
+                label="Current 2 km walk time"
+                value={profile.baseline.twoKmWalkTime}
+                helper="Example: enter 1800 and it becomes 18:00"
+                onChange={(value) => updateBaseline('twoKmWalkTime', value)}
+              />
             )}
 
-            <Field label={`${labelFor(STRENGTH_OPTIONS, profile.strengthComponent)} reps`}>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                placeholder="25"
-                value={profile.baseline.strengthReps}
-                onChangeText={(value) => updateBaseline('strengthReps', value)}
-              />
-            </Field>
+            <NumberField
+              label={`${labelFor(STRENGTH_OPTIONS, profile.strengthComponent)} reps`}
+              value={profile.baseline.strengthReps}
+              helper="Enter your best recent official-style result"
+              onChange={(value) => updateBaseline('strengthReps', value)}
+            />
 
             {profile.coreComponent === 'plank' ? (
-              <Field label="Forearm plank time">
-                <TimeInput
-                  value={profile.baseline.plankTime}
-                  placeholder="115 → 1:15"
-                  onChange={(value) => updateBaseline('plankTime', value)}
-                />
-              </Field>
+              <TimeField
+                label="Forearm plank time"
+                value={profile.baseline.plankTime}
+                helper="Example: enter 142 and it becomes 1:42"
+                onChange={(value) => updateBaseline('plankTime', value)}
+              />
             ) : (
-              <Field label={`${labelFor(CORE_OPTIONS, profile.coreComponent)} reps`}>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  placeholder="35"
-                  value={profile.baseline.coreReps}
-                  onChangeText={(value) => updateBaseline('coreReps', value)}
-                />
-              </Field>
+              <NumberField
+                label={`${labelFor(CORE_OPTIONS, profile.coreComponent)} reps`}
+                value={profile.baseline.coreReps}
+                helper="Enter your best recent official-style result"
+                onChange={(value) => updateBaseline('coreReps', value)}
+              />
             )}
           </View>
         )}
@@ -422,16 +399,14 @@ export default function SetupScreen() {
         {step === 4 && (
           <View>
             <Text style={styles.heading}>What can you train with?</Text>
-            <Text style={styles.bodyCopy}>Pick everything you normally have access to. The plan will choose substitutions from this list.</Text>
+            <Text style={styles.bodyCopy}>Pick everything you normally have access to. LoadToad will choose substitutions from this list.</Text>
             <View style={styles.wrapRow}>
               {EQUIPMENT_OPTIONS.map((option) => (
                 <ChoiceChip
                   key={option.value}
                   label={option.label}
                   selected={profile.equipment.includes(option.value)}
-                  onPress={() =>
-                    updateProfile('equipment', toggleArrayValue(profile.equipment, option.value))
-                  }
+                  onPress={() => updateProfile('equipment', toggleArrayValue(profile.equipment, option.value))}
                 />
               ))}
             </View>
@@ -450,9 +425,7 @@ export default function SetupScreen() {
                   label={option.label}
                   selected={profile.trainingDays.includes(option.value)}
                   disabled={profile.trainingDays.length === 5 && !profile.trainingDays.includes(option.value)}
-                  onPress={() =>
-                    updateProfile('trainingDays', toggleArrayValue(profile.trainingDays, option.value))
-                  }
+                  onPress={() => updateProfile('trainingDays', toggleArrayValue(profile.trainingDays, option.value))}
                 />
               ))}
             </View>
@@ -470,7 +443,7 @@ export default function SetupScreen() {
                     </Text>
                   </View>
                 ))}
-                <Text style={styles.scheduleHelper}>Routine PFA work stays submaximal. Mock-test effort is limited and scheduled intentionally.</Text>
+                <Text style={styles.scheduleHelper}>Routine PFA work stays submaximal. Max-effort mock work is scheduled intentionally.</Text>
               </View>
             )}
           </View>
@@ -479,7 +452,7 @@ export default function SetupScreen() {
         {step === 6 && (
           <View>
             <Text style={styles.heading}>Movement & mobility</Text>
-            <Text style={styles.bodyCopy}>Select movements you need LoadToad to avoid or substitute. This is about training around restrictions, not diagnosing them.</Text>
+            <Text style={styles.bodyCopy}>Select movements you need LoadToad to avoid or substitute. This adapts training; it does not diagnose injuries.</Text>
 
             {RESTRICTIONS.map((option) => {
               const selected = profile.movementRestrictions.includes(option.value);
@@ -487,12 +460,7 @@ export default function SetupScreen() {
                 <Pressable
                   key={option.value}
                   style={[styles.restrictionCard, selected && styles.restrictionCardSelected]}
-                  onPress={() =>
-                    updateProfile(
-                      'movementRestrictions',
-                      toggleArrayValue(profile.movementRestrictions, option.value)
-                    )
-                  }
+                  onPress={() => updateProfile('movementRestrictions', toggleArrayValue(profile.movementRestrictions, option.value))}
                 >
                   <View style={styles.restrictionCopy}>
                     <Text style={[styles.restrictionTitle, selected && styles.restrictionTitleSelected]}>{option.label}</Text>
@@ -503,11 +471,10 @@ export default function SetupScreen() {
               );
             })}
 
-            <Field label="Anything else LoadToad should avoid? — optional">
+            <Field label="Anything else LoadToad should avoid? — optional" helper="Describe the movement or loading pattern, not a diagnosis.">
               <TextInput
                 style={[styles.input, styles.notesInput]}
                 multiline
-                placeholder="Example: deep knee bend bothers me; lower back gets tight with heavy loading"
                 value={profile.mobilityNotes}
                 onChangeText={(value) => updateProfile('mobilityNotes', value)}
               />
@@ -518,7 +485,7 @@ export default function SetupScreen() {
         {step === 7 && (
           <View>
             <Text style={styles.heading}>Ready to build your plan</Text>
-            <Text style={styles.bodyCopy}>LoadToad will start conservative, use your baseline to set submax targets, and increase work only when you earn it.</Text>
+            <Text style={styles.bodyCopy}>LoadToad starts conservative, uses your baseline to set submaximal work, and progresses only after successful sessions.</Text>
 
             <ReviewRow label="Test date" value={profile.testDate} />
             <ReviewRow label="Cardio" value={labelFor(CARDIO_OPTIONS, profile.cardioComponent)} />
@@ -566,32 +533,87 @@ export default function SetupScreen() {
   );
 }
 
-function Field({ label, children, flex = false }: { label: string; children: React.ReactNode; flex?: boolean }) {
+function Field({
+  label,
+  helper,
+  children,
+}: {
+  label: string;
+  helper?: string;
+  children: ReactNode;
+}) {
   return (
-    <View style={[styles.field, flex && styles.flexField]}>
+    <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       {children}
+      {helper ? <Text style={styles.helper}>{helper}</Text> : null}
     </View>
   );
 }
 
-function TimeInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+function NumberField({
+  label,
+  value,
+  helper,
+  onChange,
+  decimal = false,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  onChange: (value: string) => void;
+  decimal?: boolean;
+}) {
   return (
-    <TextInput
-      style={styles.input}
-      keyboardType="numeric"
-      placeholder={placeholder}
-      value={value}
-      onChangeText={onChange}
-      onBlur={() => {
-        const formatted = formatTimeShorthand(value);
-        if (formatted) onChange(formatted);
-      }}
-    />
+    <Field label={label} helper={helper}>
+      <TextInput
+        style={styles.input}
+        keyboardType={decimal ? 'decimal-pad' : 'numeric'}
+        value={value}
+        onChangeText={onChange}
+      />
+    </Field>
   );
 }
 
-function ChoiceChip({ label, selected, onPress, disabled = false }: { label: string; selected: boolean; onPress: () => void; disabled?: boolean }) {
+function TimeField({
+  label,
+  value,
+  helper,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Field label={label} helper={helper}>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={value}
+        onChangeText={onChange}
+        onBlur={() => {
+          const formatted = formatTimeShorthand(value);
+          if (formatted) onChange(formatted);
+        }}
+      />
+    </Field>
+  );
+}
+
+function ChoiceChip({
+  label,
+  selected,
+  onPress,
+  disabled = false,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   return (
     <Pressable
       style={[
@@ -607,7 +629,17 @@ function ChoiceChip({ label, selected, onPress, disabled = false }: { label: str
   );
 }
 
-function OptionCard({ label, detail, selected, onPress }: { label: string; detail: string; selected: boolean; onPress: () => void }) {
+function OptionCard({
+  label,
+  detail,
+  selected,
+  onPress,
+}: {
+  label: string;
+  detail: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable style={[styles.optionCard, selected && styles.optionCardSelected]} onPress={onPress}>
       <View>
@@ -658,8 +690,10 @@ function isValidTime(value: string) {
 
 function isFutureDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
   const target = new Date(`${value}T12:00:00`);
   if (Number.isNaN(target.getTime())) return false;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return target.getTime() >= today.getTime();
@@ -746,6 +780,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
+    minHeight: 46,
     borderWidth: 1,
     borderColor: '#BBC7C0',
     backgroundColor: '#FFFFFF',
@@ -759,9 +794,9 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   helper: {
-    color: '#748078',
+    color: '#8A958F',
     fontSize: 12,
-    marginTop: 7,
+    marginTop: 5,
   },
   sectionLabel: {
     color: '#2B3831',
