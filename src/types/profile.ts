@@ -1,4 +1,4 @@
-export type CardioComponent = 'hamr' | 'two-mile-run';
+export type CardioComponent = 'hamr' | 'two-mile-run' | 'two-km-walk';
 export type StrengthComponent = 'push-ups' | 'hand-release-push-ups';
 export type CoreComponent = 'plank' | 'sit-ups' | 'cross-leg-reverse-crunch';
 
@@ -31,9 +31,19 @@ export type TrainingDay =
   | 'saturday'
   | 'sunday';
 
+export type BaselinePerformance = {
+  twoMileRunTime: string;
+  hamrLevel: string;
+  hamrShuttle: string;
+  twoKmWalkTime: string;
+  strengthReps: string;
+  coreReps: string;
+  plankTime: string;
+};
+
 export type UserProfile = {
   onboardingComplete: boolean;
-  age: string;
+  ageOnTestDate: string;
   sex: 'male' | 'female' | '';
   heightInches: string;
   weightLb: string;
@@ -42,9 +52,7 @@ export type UserProfile = {
   cardioComponent: CardioComponent | '';
   strengthComponent: StrengthComponent | '';
   coreComponent: CoreComponent | '';
-  baselineCardio: string;
-  baselineStrength: string;
-  baselineCore: string;
+  baseline: BaselinePerformance;
   equipment: EquipmentOption[];
   trainingDays: TrainingDay[];
   movementRestrictions: MovementRestriction[];
@@ -53,7 +61,7 @@ export type UserProfile = {
 
 export const emptyUserProfile: UserProfile = {
   onboardingComplete: false,
-  age: '',
+  ageOnTestDate: '',
   sex: '',
   heightInches: '',
   weightLb: '',
@@ -62,9 +70,15 @@ export const emptyUserProfile: UserProfile = {
   cardioComponent: '',
   strengthComponent: '',
   coreComponent: '',
-  baselineCardio: '',
-  baselineStrength: '',
-  baselineCore: '',
+  baseline: {
+    twoMileRunTime: '',
+    hamrLevel: '',
+    hamrShuttle: '',
+    twoKmWalkTime: '',
+    strengthReps: '',
+    coreReps: '',
+    plankTime: '',
+  },
   equipment: [],
   trainingDays: [],
   movementRestrictions: [],
