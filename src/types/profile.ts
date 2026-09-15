@@ -6,10 +6,12 @@ export type EquipmentOption =
   | 'full-gym'
   | 'basic-gym'
   | 'dumbbells'
+  | 'resistance-bands'
   | 'bodyweight'
   | 'track'
   | 'treadmill'
   | 'bike'
+  | 'elliptical'
   | 'rower'
   | 'stair-climber';
 
@@ -20,7 +22,10 @@ export type MovementRestriction =
   | 'run'
   | 'jump'
   | 'overhead-press'
-  | 'high-impact';
+  | 'high-impact'
+  | 'hip-hinge'
+  | 'spinal-loading'
+  | 'wrist-loading';
 
 export type TrainingDay =
   | 'monday'
