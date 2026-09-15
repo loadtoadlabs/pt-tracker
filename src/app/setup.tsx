@@ -21,46 +21,37 @@ import {
   type TrainingDay,
   type UserProfile,
 } from '@/types/profile';
+import type { TrainingSessionKind } from '@/types/training';
 
 const TOTAL_STEPS = 8;
 
 const CARDIO_OPTIONS: { value: CardioComponent; label: string; detail: string }[] = [
   { value: 'hamr', label: '20m HAMR', detail: 'Shuttle run' },
   { value: 'two-mile-run', label: '2-Mile Run', detail: 'Timed run' },
-  {
-    value: 'two-km-walk',
-    label: '2 km Walk',
-    detail: 'Medical alternative — pass/fail',
-  },
+  { value: 'two-km-walk', label: '2 km Walk', detail: 'Medical alternative — pass/fail' },
 ];
 
 const STRENGTH_OPTIONS: { value: StrengthComponent; label: string; detail: string }[] = [
   { value: 'push-ups', label: 'Push-Ups', detail: '1 minute' },
-  {
-    value: 'hand-release-push-ups',
-    label: 'Hand-Release Push-Ups',
-    detail: '2 minutes',
-  },
+  { value: 'hand-release-push-ups', label: 'Hand-Release Push-Ups', detail: '2 minutes' },
 ];
 
 const CORE_OPTIONS: { value: CoreComponent; label: string; detail: string }[] = [
   { value: 'plank', label: 'Forearm Plank', detail: 'Timed hold' },
   { value: 'sit-ups', label: 'Sit-Ups', detail: '1 minute' },
-  {
-    value: 'cross-leg-reverse-crunch',
-    label: 'Cross-Leg Reverse Crunch',
-    detail: '2 minutes',
-  },
+  { value: 'cross-leg-reverse-crunch', label: 'Cross-Leg Reverse Crunch', detail: '2 minutes' },
 ];
 
 const EQUIPMENT_OPTIONS: { value: EquipmentOption; label: string }[] = [
   { value: 'full-gym', label: 'Full Gym' },
   { value: 'basic-gym', label: 'Basic Gym' },
   { value: 'dumbbells', label: 'Dumbbells' },
+  { value: 'resistance-bands', label: 'Resistance Bands' },
   { value: 'bodyweight', label: 'Bodyweight Only' },
   { value: 'track', label: 'Track' },
   { value: 'treadmill', label: 'Treadmill' },
   { value: 'bike', label: 'Bike' },
+  { value: 'elliptical', label: 'Elliptical' },
   { value: 'rower', label: 'Rower' },
   { value: 'stair-climber', label: 'Stair Climber' },
 ];
@@ -75,57 +66,18 @@ const TRAINING_DAYS: { value: TrainingDay; label: string }[] = [
   { value: 'sunday', label: 'Sun' },
 ];
 
-const RESTRICTIONS: { value: MovementRestriction; label: string }[] = [
-  { value: 'squat', label: 'Squatting' },
-  { value: 'lunge', label: 'Lunging' },
-  { value: 'kneel', label: 'Kneeling' },
-  { value: 'run', label: 'Running' },
-  { value: 'jump', label: 'Jumping' },
-  { value: 'overhead-press', label: 'Overhead Pressing' },
-  { value: 'high-impact', label: 'High-Impact Work' },
+const RESTRICTIONS: { value: MovementRestriction; label: string; detail: string }[] = [
+  { value: 'squat', label: 'Squatting', detail: 'Avoid or substitute squat-pattern work' },
+  { value: 'lunge', label: 'Lunging', detail: 'Avoid split-stance/lunge work' },
+  { value: 'kneel', label: 'Kneeling', detail: 'Avoid kneeling positions' },
+  { value: 'run', label: 'Running', detail: 'Use lower-impact conditioning when possible' },
+  { value: 'jump', label: 'Jumping', detail: 'Avoid plyometric impact' },
+  { value: 'high-impact', label: 'High-Impact Work', detail: 'Prefer bike, elliptical, rower, or walking' },
+  { value: 'hip-hinge', label: 'Hip Hinging', detail: 'Avoid RDL/deadlift-style patterns' },
+  { value: 'spinal-loading', label: 'Heavy Back/Spinal Loading', detail: 'Prefer supported or machine variations' },
+  { value: 'overhead-press', label: 'Overhead Pressing', detail: 'Avoid pressing overhead' },
+  { value: 'wrist-loading', label: 'Wrist Loading', detail: 'Prefer neutral-grip or machine options' },
 ];
-
-function formatTimeShorthand(value: string) {
-  const clean = value.trim().replace(':', '');
-
-  if (clean === '') return '';
-  if (!/^\d+$/.test(clean)) return value;
-
-  if (clean.length <= 2) {
-    const seconds = Number(clean);
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
-  }
-
-  const minutes = Number(clean.slice(0, -2));
-  const seconds = Number(clean.slice(-2));
-  const totalSeconds = minutes * 60 + seconds;
-
-  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
-}
-
-function isValidTime(value: string) {
-  return /^\d+:[0-5]\d$/.test(value.trim());
-}
-
-function isFutureDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-
-  const target = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(target.getTime())) return false;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return target.getTime() >= today.getTime();
-}
-
-function labelFor<T extends string>(
-  options: { value: T; label: string }[],
-  value: T | ''
-) {
-  return options.find((option) => option.value === value)?.label ?? 'Not selected';
-}
 
 export default function SetupScreen() {
   const [step, setStep] = useState(0);
@@ -165,19 +117,14 @@ export default function SetupScreen() {
       const height = Number(profile.heightInches);
       const weight = Number(profile.weightLb);
 
-      if (!Number.isInteger(age) || age < 17 || age > 100) {
-        return 'Enter your age on test day.';
-      }
-
+      if (!Number.isInteger(age) || age < 17 || age > 100) return 'Enter your age on test day.';
       if (!profile.sex) return 'Select the scoring standard you use.';
-      if (!Number.isFinite(height) || height < 48 || height > 90) {
-        return 'Enter a valid height in inches.';
-      }
+      if (!Number.isFinite(height) || height < 48 || height > 90) return 'Enter a valid height in inches.';
       if (!Number.isFinite(weight) || weight <= 0) return 'Enter your current weight.';
     }
 
     if (step === 1 && !isFutureDate(profile.testDate)) {
-      return 'Enter a valid test date using YYYY-MM-DD.';
+      return 'Enter a valid future test date using YYYY-MM-DD.';
     }
 
     if (
@@ -194,17 +141,11 @@ export default function SetupScreen() {
         }
       }
 
-      if (
-        profile.cardioComponent === 'two-mile-run' &&
-        !isValidTime(profile.baseline.twoMileRunTime)
-      ) {
+      if (profile.cardioComponent === 'two-mile-run' && !isValidTime(profile.baseline.twoMileRunTime)) {
         return 'Enter your current 2-mile time.';
       }
 
-      if (
-        profile.cardioComponent === 'two-km-walk' &&
-        !isValidTime(profile.baseline.twoKmWalkTime)
-      ) {
+      if (profile.cardioComponent === 'two-km-walk' && !isValidTime(profile.baseline.twoKmWalkTime)) {
         return 'Enter your current 2 km walk time.';
       }
 
@@ -232,7 +173,6 @@ export default function SetupScreen() {
 
   function nextStep() {
     const error = validateCurrentStep();
-
     if (error) {
       setMessage(error);
       return;
@@ -269,9 +209,9 @@ export default function SetupScreen() {
       <View style={styles.shell}>
         <View style={styles.brandRow}>
           <Text style={styles.logo}>🐸</Text>
-          <View>
+          <View style={styles.brandCopy}>
             <Text style={styles.brand}>LoadToad PT</Text>
-            <Text style={styles.muted}>Build your plan once. Adjust as you improve.</Text>
+            <Text style={styles.muted}>Set it up once. Let the plan do the thinking.</Text>
           </View>
         </View>
 
@@ -283,77 +223,75 @@ export default function SetupScreen() {
         {step === 0 && (
           <View>
             <Text style={styles.heading}>Start with the basics</Text>
-            <Text style={styles.bodyCopy}>
-              We use this to choose the correct scoring bracket and scale training appropriately.
-            </Text>
+            <Text style={styles.bodyCopy}>We use this for scoring, body-composition trends, and training scale.</Text>
 
-            <Text style={styles.label}>Age on your test date</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              placeholder="36"
-              value={profile.ageOnTestDate}
-              onChangeText={(value) => updateProfile('ageOnTestDate', value)}
-            />
+            <Field label="Age on your test date">
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                placeholder="36"
+                value={profile.ageOnTestDate}
+                onChangeText={(value) => updateProfile('ageOnTestDate', value)}
+              />
+            </Field>
 
             <Text style={styles.label}>Scoring standard</Text>
             <View style={styles.choiceRow}>
               {(['male', 'female'] as const).map((sex) => (
-                <Pressable
+                <ChoiceChip
                   key={sex}
-                  style={[styles.choiceChip, profile.sex === sex && styles.choiceChipSelected]}
+                  label={sex === 'male' ? 'Male' : 'Female'}
+                  selected={profile.sex === sex}
                   onPress={() => updateProfile('sex', sex)}
-                >
-                  <Text style={[styles.choiceText, profile.sex === sex && styles.choiceTextSelected]}>
-                    {sex === 'male' ? 'Male' : 'Female'}
-                  </Text>
-                </Pressable>
+                />
               ))}
             </View>
 
-            <Text style={styles.label}>Height (inches)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              placeholder="67"
-              value={profile.heightInches}
-              onChangeText={(value) => updateProfile('heightInches', value)}
-            />
+            <Field label="Height (inches)">
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                placeholder="67"
+                value={profile.heightInches}
+                onChangeText={(value) => updateProfile('heightInches', value)}
+              />
+            </Field>
 
-            <Text style={styles.label}>Current weight (lb)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="decimal-pad"
-              placeholder="225"
-              value={profile.weightLb}
-              onChangeText={(value) => updateProfile('weightLb', value)}
-            />
+            <Field label="Current weight (lb)">
+              <TextInput
+                style={styles.input}
+                keyboardType="decimal-pad"
+                placeholder="225"
+                value={profile.weightLb}
+                onChangeText={(value) => updateProfile('weightLb', value)}
+              />
+            </Field>
 
-            <Text style={styles.label}>Current waist (inches) — optional</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="decimal-pad"
-              placeholder="38.5"
-              value={profile.waistInches}
-              onChangeText={(value) => updateProfile('waistInches', value)}
-            />
+            <Field label="Current waist (inches) — optional">
+              <TextInput
+                style={styles.input}
+                keyboardType="decimal-pad"
+                placeholder="38.5"
+                value={profile.waistInches}
+                onChangeText={(value) => updateProfile('waistInches', value)}
+              />
+            </Field>
           </View>
         )}
 
         {step === 1 && (
           <View>
             <Text style={styles.heading}>When do you test?</Text>
-            <Text style={styles.bodyCopy}>
-              Your exact date controls progression, mock assessments, and the taper before test day.
-            </Text>
-            <Text style={styles.label}>PFA date</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="2026-10-15"
-              autoCapitalize="none"
-              value={profile.testDate}
-              onChangeText={(value) => updateProfile('testDate', value)}
-            />
+            <Text style={styles.bodyCopy}>The exact date controls progression, mock-test timing, and the taper.</Text>
+            <Field label="PFA date">
+              <TextInput
+                style={styles.input}
+                placeholder="2026-10-15"
+                autoCapitalize="none"
+                value={profile.testDate}
+                onChangeText={(value) => updateProfile('testDate', value)}
+              />
+            </Field>
             <Text style={styles.helper}>Use YYYY-MM-DD for now. A calendar picker comes later.</Text>
           </View>
         )}
@@ -361,9 +299,7 @@ export default function SetupScreen() {
         {step === 2 && (
           <View>
             <Text style={styles.heading}>Choose your test components</Text>
-            <Text style={styles.bodyCopy}>
-              LoadToad will build the plan around the exact events you intend to perform.
-            </Text>
+            <Text style={styles.bodyCopy}>Your plan will train the exact events you intend to perform.</Text>
 
             <Text style={styles.sectionLabel}>Cardio</Text>
             {CARDIO_OPTIONS.map((option) => (
@@ -403,16 +339,13 @@ export default function SetupScreen() {
         {step === 3 && (
           <View>
             <Text style={styles.heading}>Set your baseline</Text>
-            <Text style={styles.bodyCopy}>
-              Use your best recent honest result. This is how LoadToad decides where your program should start.
-            </Text>
+            <Text style={styles.bodyCopy}>Use your best recent honest result. LoadToad uses it to set submaximal work targets instead of maxing you out every day.</Text>
 
             {profile.cardioComponent === 'hamr' && (
               <>
                 <Text style={styles.sectionLabel}>20m HAMR</Text>
                 <View style={styles.twoColumn}>
-                  <View style={styles.flexField}>
-                    <Text style={styles.label}>Level</Text>
+                  <Field label="Level" flex>
                     <TextInput
                       style={styles.input}
                       keyboardType="numeric"
@@ -420,9 +353,8 @@ export default function SetupScreen() {
                       value={profile.baseline.hamrLevel}
                       onChangeText={(value) => updateBaseline('hamrLevel', value)}
                     />
-                  </View>
-                  <View style={styles.flexField}>
-                    <Text style={styles.label}>Shuttle</Text>
+                  </Field>
+                  <Field label="Shuttle" flex>
                     <TextInput
                       style={styles.input}
                       keyboardType="numeric"
@@ -430,63 +362,59 @@ export default function SetupScreen() {
                       value={profile.baseline.hamrShuttle}
                       onChangeText={(value) => updateBaseline('hamrShuttle', value)}
                     />
-                  </View>
+                  </Field>
                 </View>
               </>
             )}
 
             {profile.cardioComponent === 'two-mile-run' && (
-              <TimeInput
-                label="Current 2-mile time"
-                value={profile.baseline.twoMileRunTime}
-                placeholder="1830 → 18:30"
-                onChangeText={(value) => updateBaseline('twoMileRunTime', value)}
-                onFormat={(value) => updateBaseline('twoMileRunTime', value)}
-              />
+              <Field label="Current 2-mile time">
+                <TimeInput
+                  value={profile.baseline.twoMileRunTime}
+                  placeholder="1530 → 15:30"
+                  onChange={(value) => updateBaseline('twoMileRunTime', value)}
+                />
+              </Field>
             )}
 
             {profile.cardioComponent === 'two-km-walk' && (
-              <TimeInput
-                label="Current 2 km walk time"
-                value={profile.baseline.twoKmWalkTime}
-                placeholder="1610 → 16:10"
-                onChangeText={(value) => updateBaseline('twoKmWalkTime', value)}
-                onFormat={(value) => updateBaseline('twoKmWalkTime', value)}
-              />
+              <Field label="Current 2 km walk time">
+                <TimeInput
+                  value={profile.baseline.twoKmWalkTime}
+                  placeholder="1800 → 18:00"
+                  onChange={(value) => updateBaseline('twoKmWalkTime', value)}
+                />
+              </Field>
             )}
 
-            <Text style={styles.sectionLabel}>
-              {labelFor(STRENGTH_OPTIONS, profile.strengthComponent)}
-            </Text>
-            <Text style={styles.label}>Reps</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              placeholder="25"
-              value={profile.baseline.strengthReps}
-              onChangeText={(value) => updateBaseline('strengthReps', value)}
-            />
-
-            <Text style={styles.sectionLabel}>{labelFor(CORE_OPTIONS, profile.coreComponent)}</Text>
-            {profile.coreComponent === 'plank' ? (
-              <TimeInput
-                label="Plank time"
-                value={profile.baseline.plankTime}
-                placeholder="115 → 1:15"
-                onChangeText={(value) => updateBaseline('plankTime', value)}
-                onFormat={(value) => updateBaseline('plankTime', value)}
+            <Field label={`${labelFor(STRENGTH_OPTIONS, profile.strengthComponent)} reps`}>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                placeholder="25"
+                value={profile.baseline.strengthReps}
+                onChangeText={(value) => updateBaseline('strengthReps', value)}
               />
+            </Field>
+
+            {profile.coreComponent === 'plank' ? (
+              <Field label="Forearm plank time">
+                <TimeInput
+                  value={profile.baseline.plankTime}
+                  placeholder="115 → 1:15"
+                  onChange={(value) => updateBaseline('plankTime', value)}
+                />
+              </Field>
             ) : (
-              <>
-                <Text style={styles.label}>Reps</Text>
+              <Field label={`${labelFor(CORE_OPTIONS, profile.coreComponent)} reps`}>
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"
-                  placeholder="30"
+                  placeholder="35"
                   value={profile.baseline.coreReps}
                   onChangeText={(value) => updateBaseline('coreReps', value)}
                 />
-              </>
+              </Field>
             )}
           </View>
         )}
@@ -494,29 +422,18 @@ export default function SetupScreen() {
         {step === 4 && (
           <View>
             <Text style={styles.heading}>What can you train with?</Text>
-            <Text style={styles.bodyCopy}>
-              Pick everything you reliably have access to. The plan will substitute around what you do not have.
-            </Text>
+            <Text style={styles.bodyCopy}>Pick everything you normally have access to. The plan will choose substitutions from this list.</Text>
             <View style={styles.wrapRow}>
-              {EQUIPMENT_OPTIONS.map((option) => {
-                const selected = profile.equipment.includes(option.value);
-                return (
-                  <Pressable
-                    key={option.value}
-                    style={[styles.choiceChip, selected && styles.choiceChipSelected]}
-                    onPress={() =>
-                      updateProfile(
-                        'equipment',
-                        toggleArrayValue(profile.equipment, option.value)
-                      )
-                    }
-                  >
-                    <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {EQUIPMENT_OPTIONS.map((option) => (
+                <ChoiceChip
+                  key={option.value}
+                  label={option.label}
+                  selected={profile.equipment.includes(option.value)}
+                  onPress={() =>
+                    updateProfile('equipment', toggleArrayValue(profile.equipment, option.value))
+                  }
+                />
+              ))}
             </View>
           </View>
         )}
@@ -524,48 +441,36 @@ export default function SetupScreen() {
         {step === 5 && (
           <View>
             <Text style={styles.heading}>Pick five training days</Text>
-            <Text style={styles.bodyCopy}>
-              You choose the days. LoadToad automatically preserves three PFA-focused sessions and two strength-support sessions.
-            </Text>
-            <Text style={styles.counter}>{profile.trainingDays.length}/5 selected</Text>
+            <Text style={styles.bodyCopy}>You choose the days. LoadToad preserves the 3 PFA / 2 strength structure and assigns each day a purpose.</Text>
+
             <View style={styles.wrapRow}>
-              {TRAINING_DAYS.map((option) => {
-                const selected = profile.trainingDays.includes(option.value);
-                const disabled = !selected && profile.trainingDays.length >= 5;
-                return (
-                  <Pressable
-                    key={option.value}
-                    disabled={disabled}
-                    style={[
-                      styles.dayChip,
-                      selected && styles.choiceChipSelected,
-                      disabled && styles.disabled,
-                    ]}
-                    onPress={() =>
-                      updateProfile(
-                        'trainingDays',
-                        toggleArrayValue(profile.trainingDays, option.value)
-                      )
-                    }
-                  >
-                    <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {TRAINING_DAYS.map((option) => (
+                <ChoiceChip
+                  key={option.value}
+                  label={option.label}
+                  selected={profile.trainingDays.includes(option.value)}
+                  disabled={profile.trainingDays.length === 5 && !profile.trainingDays.includes(option.value)}
+                  onPress={() =>
+                    updateProfile('trainingDays', toggleArrayValue(profile.trainingDays, option.value))
+                  }
+                />
+              ))}
             </View>
 
-            {profile.trainingDays.length === 5 && (
-              <View style={styles.schedulePreview}>
+            <Text style={styles.counter}>{profile.trainingDays.length} / 5 selected</Text>
+
+            {schedule.length === 5 && (
+              <View style={styles.scheduleCard}>
+                <Text style={styles.scheduleTitle}>Your weekly structure</Text>
                 {schedule.map((entry) => (
                   <View key={entry.day} style={styles.scheduleRow}>
                     <Text style={styles.scheduleDay}>{formatTrainingDay(entry.day)}</Text>
-                    <Text style={entry.type === 'pfa' ? styles.pfaTag : styles.strengthTag}>
-                      {entry.type === 'pfa' ? 'PFA Focus' : 'Strength'}
+                    <Text style={entry.type === 'pfa' ? styles.pfaText : styles.strengthText}>
+                      {scheduleKindLabel(entry.kind)}
                     </Text>
                   </View>
                 ))}
+                <Text style={styles.scheduleHelper}>Routine PFA work stays submaximal. Mock-test effort is limited and scheduled intentionally.</Text>
               </View>
             )}
           </View>
@@ -574,136 +479,143 @@ export default function SetupScreen() {
         {step === 6 && (
           <View>
             <Text style={styles.heading}>Movement & mobility</Text>
-            <Text style={styles.bodyCopy}>
-              Select movements you need LoadToad to avoid or substitute. This changes exercise selection — it does not diagnose injuries.
-            </Text>
-            <Text style={styles.sectionLabel}>Avoid or modify</Text>
-            <View style={styles.wrapRow}>
-              {RESTRICTIONS.map((option) => {
-                const selected = profile.movementRestrictions.includes(option.value);
-                return (
-                  <Pressable
-                    key={option.value}
-                    style={[styles.choiceChip, selected && styles.warningChipSelected]}
-                    onPress={() =>
-                      updateProfile(
-                        'movementRestrictions',
-                        toggleArrayValue(profile.movementRestrictions, option.value)
-                      )
-                    }
-                  >
-                    <Text style={[styles.choiceText, selected && styles.warningTextSelected]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Text style={styles.bodyCopy}>Select movements you need LoadToad to avoid or substitute. This is about training around restrictions, not diagnosing them.</Text>
 
-            <Text style={styles.label}>Anything else LoadToad should avoid?</Text>
-            <TextInput
-              style={[styles.input, styles.notesInput]}
-              multiline
-              placeholder="Example: Deep knee flexion bothers my left knee. Heavy spinal loading irritates my back."
-              value={profile.mobilityNotes}
-              onChangeText={(value) => updateProfile('mobilityNotes', value)}
-            />
+            {RESTRICTIONS.map((option) => {
+              const selected = profile.movementRestrictions.includes(option.value);
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.restrictionCard, selected && styles.restrictionCardSelected]}
+                  onPress={() =>
+                    updateProfile(
+                      'movementRestrictions',
+                      toggleArrayValue(profile.movementRestrictions, option.value)
+                    )
+                  }
+                >
+                  <View style={styles.restrictionCopy}>
+                    <Text style={[styles.restrictionTitle, selected && styles.restrictionTitleSelected]}>{option.label}</Text>
+                    <Text style={styles.restrictionDetail}>{option.detail}</Text>
+                  </View>
+                  <Text style={styles.check}>{selected ? '✓' : ''}</Text>
+                </Pressable>
+              );
+            })}
+
+            <Field label="Anything else LoadToad should avoid? — optional">
+              <TextInput
+                style={[styles.input, styles.notesInput]}
+                multiline
+                placeholder="Example: deep knee bend bothers me; lower back gets tight with heavy loading"
+                value={profile.mobilityNotes}
+                onChangeText={(value) => updateProfile('mobilityNotes', value)}
+              />
+            </Field>
           </View>
         )}
 
         {step === 7 && (
           <View>
             <Text style={styles.heading}>Ready to build your plan</Text>
-            <Text style={styles.bodyCopy}>
-              LoadToad will use this profile to calculate your starting level, prioritize weak components, and build the first 3/2 training week.
-            </Text>
+            <Text style={styles.bodyCopy}>LoadToad will start conservative, use your baseline to set submax targets, and increase work only when you earn it.</Text>
 
             <ReviewRow label="Test date" value={profile.testDate} />
             <ReviewRow label="Cardio" value={labelFor(CARDIO_OPTIONS, profile.cardioComponent)} />
             <ReviewRow label="Strength" value={labelFor(STRENGTH_OPTIONS, profile.strengthComponent)} />
             <ReviewRow label="Core" value={labelFor(CORE_OPTIONS, profile.coreComponent)} />
             <ReviewRow label="Training days" value={profile.trainingDays.map(formatTrainingDay).join(', ')} />
-            <ReviewRow label="Equipment" value={`${profile.equipment.length} selected`} />
-            <ReviewRow
-              label="Movement restrictions"
-              value={profile.movementRestrictions.length ? `${profile.movementRestrictions.length} selected` : 'None selected'}
-            />
+            <ReviewRow label="Equipment" value={`${profile.equipment.length} option${profile.equipment.length === 1 ? '' : 's'}`} />
+            <ReviewRow label="Restrictions" value={profile.movementRestrictions.length ? `${profile.movementRestrictions.length} saved` : 'None selected'} />
 
-            <Pressable style={styles.finishButton} onPress={finishSetup} disabled={saving}>
-              <Text style={styles.primaryButtonText}>
-                {saving ? 'Saving…' : 'Build My Plan'}
-              </Text>
-            </Pressable>
+            <View style={styles.programRules}>
+              <Text style={styles.programRulesTitle}>Program rules</Text>
+              <Text style={styles.rule}>• 3 PFA-specific days + 2 strength-support days</Text>
+              <Text style={styles.rule}>• Routine PFA sets stay submaximal</Text>
+              <Text style={styles.rule}>• One true max-effort mock at most in a training week</Text>
+              <Text style={styles.rule}>• Strength days do not stack hard running</Text>
+              <Text style={styles.rule}>• Progression is earned by clean successful sessions</Text>
+              <Text style={styles.rule}>• Pain/restriction flags trigger substitutions</Text>
+            </View>
           </View>
         )}
 
         {message !== '' && <Text style={styles.error}>{message}</Text>}
 
-        {step < TOTAL_STEPS - 1 && (
-          <View style={styles.navigationRow}>
-            {step > 0 ? (
-              <Pressable style={styles.backButton} onPress={previousStep}>
-                <Text style={styles.backButtonText}>Back</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.navigationSpacer} />
-            )}
-            <Pressable style={styles.nextButton} onPress={nextStep}>
-              <Text style={styles.primaryButtonText}>Continue</Text>
+        <View style={styles.navRow}>
+          {step > 0 ? (
+            <Pressable style={styles.backButton} onPress={previousStep}>
+              <Text style={styles.backButtonText}>Back</Text>
             </Pressable>
-          </View>
-        )}
+          ) : (
+            <View style={styles.backSpacer} />
+          )}
 
-        {step === TOTAL_STEPS - 1 && (
-          <Pressable style={styles.reviewBackButton} onPress={previousStep}>
-            <Text style={styles.backButtonText}>Back and Edit</Text>
-          </Pressable>
-        )}
+          {step < TOTAL_STEPS - 1 ? (
+            <Pressable style={styles.nextButton} onPress={nextStep}>
+              <Text style={styles.nextButtonText}>Continue</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={styles.nextButton} onPress={finishSetup} disabled={saving}>
+              <Text style={styles.nextButtonText}>{saving ? 'Saving…' : 'Build My Plan'}</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
 }
 
-type OptionCardProps = {
-  label: string;
-  detail: string;
-  selected: boolean;
-  onPress: () => void;
-};
-
-function OptionCard({ label, detail, selected, onPress }: OptionCardProps) {
+function Field({ label, children, flex = false }: { label: string; children: React.ReactNode; flex?: boolean }) {
   return (
-    <Pressable style={[styles.optionCard, selected && styles.optionCardSelected]} onPress={onPress}>
-      <View style={styles.optionTextBlock}>
-        <Text style={styles.optionTitle}>{label}</Text>
-        <Text style={styles.optionDetail}>{detail}</Text>
-      </View>
-      <Text style={styles.optionCheck}>{selected ? '✓' : '○'}</Text>
+    <View style={[styles.field, flex && styles.flexField]}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+function TimeInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <TextInput
+      style={styles.input}
+      keyboardType="numeric"
+      placeholder={placeholder}
+      value={value}
+      onChangeText={onChange}
+      onBlur={() => {
+        const formatted = formatTimeShorthand(value);
+        if (formatted) onChange(formatted);
+      }}
+    />
+  );
+}
+
+function ChoiceChip({ label, selected, onPress, disabled = false }: { label: string; selected: boolean; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable
+      style={[
+        styles.choiceChip,
+        selected && styles.choiceChipSelected,
+        disabled && styles.choiceChipDisabled,
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
     </Pressable>
   );
 }
 
-type TimeInputProps = {
-  label: string;
-  value: string;
-  placeholder: string;
-  onChangeText: (value: string) => void;
-  onFormat: (value: string) => void;
-};
-
-function TimeInput({ label, value, placeholder, onChangeText, onFormat }: TimeInputProps) {
+function OptionCard({ label, detail, selected, onPress }: { label: string; detail: string; selected: boolean; onPress: () => void }) {
   return (
-    <>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="numeric"
-        placeholder={placeholder}
-        value={value}
-        onChangeText={onChangeText}
-        onBlur={() => onFormat(formatTimeShorthand(value))}
-      />
-    </>
+    <Pressable style={[styles.optionCard, selected && styles.optionCardSelected]} onPress={onPress}>
+      <View>
+        <Text style={[styles.optionTitle, selected && styles.optionTitleSelected]}>{label}</Text>
+        <Text style={styles.optionDetail}>{detail}</Text>
+      </View>
+      <Text style={styles.check}>{selected ? '✓' : ''}</Text>
+    </Pressable>
   );
 }
 
@@ -711,46 +623,89 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.reviewRow}>
       <Text style={styles.reviewLabel}>{label}</Text>
-      <Text style={styles.reviewValue}>{value}</Text>
+      <Text style={styles.reviewValue}>{value || '-'}</Text>
     </View>
   );
+}
+
+function scheduleKindLabel(kind: TrainingSessionKind) {
+  if (kind === 'pfa-technique') return 'PFA — Technique / Acceleration';
+  if (kind === 'pfa-controlled') return 'PFA — Controlled Specific';
+  if (kind === 'pfa-quality') return 'PFA — Quality / Mock';
+  if (kind === 'strength-a') return 'Strength A — Lower + Trunk';
+  return 'Strength B — Upper + Durability';
+}
+
+function formatTimeShorthand(value: string) {
+  const clean = value.trim().replace(':', '');
+  if (clean === '' || !/^\d+$/.test(clean)) return '';
+
+  let totalSeconds = 0;
+  if (clean.length <= 2) {
+    totalSeconds = Number(clean);
+  } else {
+    const minutes = Number(clean.slice(0, -2));
+    const seconds = Number(clean.slice(-2));
+    totalSeconds = minutes * 60 + seconds;
+  }
+
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+}
+
+function isValidTime(value: string) {
+  return /^\d+:[0-5]\d$/.test(value.trim());
+}
+
+function isFutureDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const target = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(target.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return target.getTime() >= today.getTime();
+}
+
+function labelFor<T extends string>(options: { value: T; label: string }[], value: T | '') {
+  return options.find((option) => option.value === value)?.label ?? 'Not selected';
 }
 
 const styles = StyleSheet.create({
   page: {
     flexGrow: 1,
+    alignItems: 'center',
     backgroundColor: '#F4F7F5',
     padding: 20,
-    alignItems: 'center',
+    paddingBottom: 50,
   },
   shell: {
     width: '100%',
-    maxWidth: 620,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    marginVertical: 18,
+    maxWidth: 650,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginTop: 8,
     marginBottom: 18,
   },
+  brandCopy: {
+    flex: 1,
+  },
   logo: {
-    fontSize: 42,
+    fontSize: 48,
   },
   brand: {
-    fontSize: 22,
-    fontWeight: '800',
+    color: '#17211C',
+    fontSize: 25,
+    fontWeight: '900',
   },
   muted: {
-    color: '#66736C',
+    color: '#68756D',
     marginTop: 2,
   },
   progressTrack: {
-    height: 8,
-    backgroundColor: '#E3E9E5',
+    height: 7,
+    backgroundColor: '#DDE5E0',
     borderRadius: 99,
     overflow: 'hidden',
   },
@@ -759,237 +714,277 @@ const styles = StyleSheet.create({
     backgroundColor: '#2E8B57',
   },
   stepText: {
-    color: '#66736C',
-    fontSize: 13,
-    marginTop: 8,
-    marginBottom: 20,
+    color: '#6E7A73',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 7,
+    marginBottom: 22,
   },
   heading: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
     color: '#17211C',
+    fontSize: 30,
+    fontWeight: '900',
   },
   bodyCopy: {
+    color: '#647168',
     fontSize: 16,
     lineHeight: 23,
-    color: '#5A6760',
-    marginTop: 8,
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 14,
-    marginBottom: 7,
-    color: '#26322C',
-  },
-  sectionLabel: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#26322C',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD4CF',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  notesInput: {
-    minHeight: 110,
-    textAlignVertical: 'top',
-  },
-  helper: {
-    color: '#748078',
-    fontSize: 13,
     marginTop: 7,
+    marginBottom: 14,
   },
-  choiceRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  choiceChip: {
-    borderWidth: 1,
-    borderColor: '#CBD4CF',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: '#FAFCFA',
-  },
-  dayChip: {
-    minWidth: 64,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#CBD4CF',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#FAFCFA',
-  },
-  choiceChipSelected: {
-    backgroundColor: '#E4F3EA',
-    borderColor: '#2E8B57',
-  },
-  warningChipSelected: {
-    backgroundColor: '#FFF0E8',
-    borderColor: '#B85C2C',
-  },
-  choiceText: {
-    color: '#34413A',
-    fontWeight: '600',
-  },
-  choiceTextSelected: {
-    color: '#1F6A43',
-  },
-  warningTextSelected: {
-    color: '#91431F',
-  },
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#D5DDD8',
-    borderRadius: 14,
-    padding: 15,
-    marginBottom: 9,
-  },
-  optionCardSelected: {
-    borderColor: '#2E8B57',
-    backgroundColor: '#EEF8F2',
-  },
-  optionTextBlock: {
-    flex: 1,
-  },
-  optionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#25312B',
-  },
-  optionDetail: {
-    color: '#6C776F',
-    marginTop: 3,
-  },
-  optionCheck: {
-    fontSize: 22,
-    color: '#2E8B57',
-    marginLeft: 10,
-  },
-  twoColumn: {
-    flexDirection: 'row',
-    gap: 12,
+  field: {
+    marginTop: 14,
   },
   flexField: {
     flex: 1,
   },
-  counter: {
+  label: {
+    color: '#47554D',
+    fontSize: 14,
     fontWeight: '800',
-    color: '#2E8B57',
-    marginBottom: 14,
+    marginBottom: 6,
   },
-  disabled: {
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#BBC7C0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  notesInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  helper: {
+    color: '#748078',
+    fontSize: 12,
+    marginTop: 7,
+  },
+  sectionLabel: {
+    color: '#2B3831',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  optionCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D6DED9',
+    borderRadius: 13,
+    padding: 14,
+    marginBottom: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  optionCardSelected: {
+    borderColor: '#2E8B57',
+    backgroundColor: '#EDF8F1',
+  },
+  optionTitle: {
+    color: '#26332C',
+    fontWeight: '900',
+    fontSize: 16,
+  },
+  optionTitleSelected: {
+    color: '#1F6A43',
+  },
+  optionDetail: {
+    color: '#718078',
+    marginTop: 2,
+  },
+  check: {
+    color: '#2E8B57',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  choiceRow: {
+    flexDirection: 'row',
+    gap: 9,
+  },
+  wrapRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
+    marginTop: 10,
+  },
+  choiceChip: {
+    borderWidth: 1,
+    borderColor: '#BBC7C0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 99,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  choiceChipSelected: {
+    backgroundColor: '#2E8B57',
+    borderColor: '#2E8B57',
+  },
+  choiceChipDisabled: {
     opacity: 0.35,
   },
-  schedulePreview: {
-    marginTop: 22,
-    borderTopWidth: 1,
-    borderTopColor: '#E1E7E3',
-    paddingTop: 12,
+  choiceText: {
+    color: '#47554D',
+    fontWeight: '800',
+  },
+  choiceTextSelected: {
+    color: '#FFFFFF',
+  },
+  twoColumn: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  counter: {
+    color: '#6E7A73',
+    marginTop: 11,
+    fontWeight: '700',
+  },
+  scheduleCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D8E0DB',
+    borderRadius: 14,
+    padding: 15,
+    marginTop: 16,
+  },
+  scheduleTitle: {
+    color: '#27342D',
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 7,
   },
   scheduleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
+    gap: 12,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2EF',
   },
   scheduleDay: {
-    fontWeight: '700',
-    color: '#26322C',
+    color: '#58655D',
+    fontWeight: '800',
   },
-  pfaTag: {
+  pfaText: {
+    color: '#267149',
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  strengthText: {
+    color: '#535F92',
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  scheduleHelper: {
+    color: '#718078',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
+  },
+  restrictionCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D6DED9',
+    borderRadius: 13,
+    padding: 13,
+    marginTop: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  restrictionCardSelected: {
+    borderColor: '#2E8B57',
+    backgroundColor: '#EDF8F1',
+  },
+  restrictionCopy: {
+    flex: 1,
+  },
+  restrictionTitle: {
+    color: '#2F3B35',
+    fontWeight: '900',
+  },
+  restrictionTitleSelected: {
     color: '#1F6A43',
-    fontWeight: '800',
   },
-  strengthTag: {
-    color: '#4E5D87',
-    fontWeight: '800',
+  restrictionDetail: {
+    color: '#718078',
+    fontSize: 12,
+    marginTop: 2,
   },
   reviewRow: {
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E6EBE8',
+    borderBottomColor: '#E7ECE9',
     paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
   },
   reviewLabel: {
-    color: '#748078',
-    fontSize: 13,
+    color: '#6C7971',
+    fontWeight: '700',
   },
   reviewValue: {
-    color: '#25312B',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 3,
+    color: '#26332C',
+    fontWeight: '900',
+    flex: 1,
+    textAlign: 'right',
+  },
+  programRules: {
+    backgroundColor: '#EDF8F1',
+    borderRadius: 14,
+    padding: 15,
+    marginTop: 16,
+  },
+  programRulesTitle: {
+    color: '#205F3F',
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 7,
+  },
+  rule: {
+    color: '#3D5A49',
+    lineHeight: 21,
+    marginTop: 2,
   },
   error: {
-    color: '#B42318',
-    backgroundColor: '#FFF1F0',
-    borderRadius: 10,
-    padding: 11,
-    marginTop: 16,
-    fontWeight: '700',
+    color: '#A62B2B',
+    fontWeight: '800',
+    marginTop: 14,
   },
-  navigationRow: {
+  navRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 26,
+    gap: 10,
+    marginTop: 24,
   },
-  navigationSpacer: {
+  backSpacer: {
     flex: 1,
   },
   backButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#BCC7C0',
-    borderRadius: 12,
-    paddingVertical: 13,
+    borderColor: '#BFCAC3',
+    borderRadius: 11,
     alignItems: 'center',
+    paddingVertical: 13,
   },
   backButtonText: {
-    color: '#334039',
-    fontSize: 16,
-    fontWeight: '800',
+    color: '#47554D',
+    fontWeight: '900',
   },
   nextButton: {
-    flex: 1,
+    flex: 1.4,
     backgroundColor: '#2E8B57',
-    borderRadius: 12,
+    borderRadius: 11,
+    alignItems: 'center',
     paddingVertical: 13,
-    alignItems: 'center',
   },
-  primaryButtonText: {
+  nextButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  finishButton: {
-    backgroundColor: '#2E8B57',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  reviewBackButton: {
-    alignItems: 'center',
-    marginTop: 14,
-    paddingVertical: 10,
+    fontWeight: '900',
   },
 });
