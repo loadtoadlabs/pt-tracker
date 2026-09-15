@@ -16,6 +16,8 @@ import { formatTrainingDay, getTodayTrainingDay } from '@/lib/training-schedule'
 import type { UserProfile } from '@/types/profile';
 import type { PlannedWorkout } from '@/types/training';
 
+const SESSION_KEY = 'loadtoad.training-sessions.v1';
+
 type Workout = {
   id: number;
   date: string;
@@ -25,14 +27,19 @@ type Workout = {
   pushUps?: string;
   plank?: string;
   hamr?: string;
-  weight?: string;
-  notes?: string;
+};
+
+type StoredTrainingSession = {
+  id: number;
+  date: string;
+  sessionTitle: string;
 };
 
 export default function HomeScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [lastWorkout, setLastWorkout] = useState<Workout | null>(null);
   const [workoutCount, setWorkoutCount] = useState(0);
+  const [sessionCount, setSessionCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -54,10 +61,16 @@ export default function HomeScreen() {
 
       setProfile(savedProfile);
 
-      const savedWorkouts = await AsyncStorage.getItem('workouts');
+      const [savedWorkouts, savedSessions] = await Promise.all([
+        AsyncStorage.getItem('workouts'),
+        AsyncStorage.getItem(SESSION_KEY),
+      ]);
+
       const workouts: Workout[] = savedWorkouts ? JSON.parse(savedWorkouts) : [];
+      const sessions: StoredTrainingSession[] = savedSessions ? JSON.parse(savedSessions) : [];
 
       setWorkoutCount(workouts.length);
+      setSessionCount(sessions.length);
       setLastWorkout(workouts.length > 0 ? workouts[workouts.length - 1] : null);
     } catch (error) {
       console.log('Could not load home screen:', error);
@@ -75,8 +88,8 @@ export default function HomeScreen() {
     );
   }
 
-  const today = getTodayTrainingDay(profile.trainingDays);
-  const workout = today ? buildPlannedWorkout(profile, today) : null;
+  const scheduled = getTodayTrainingDay(profile.trainingDays);
+  const workout = scheduled ? buildPlannedWorkout(profile, scheduled) : null;
   const daysRemaining = getDaysUntil(profile.testDate);
 
   return (
@@ -93,7 +106,9 @@ export default function HomeScreen() {
         <View>
           <Text style={styles.testStripLabel}>PFA COUNTDOWN</Text>
           <Text style={styles.testStripValue}>
-            {daysRemaining === 0 ? 'Test day' : `${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`}
+            {daysRemaining === 0
+              ? 'Test day'
+              : `${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`}
           </Text>
         </View>
         <Text style={styles.testDate}>{formatDate(profile.testDate)}</Text>
@@ -106,13 +121,13 @@ export default function HomeScreen() {
       <View style={styles.dashboard}>
         <View style={styles.dashboardHeader}>
           <Text style={styles.dashboardTitle}>Current Snapshot</Text>
-          <Text style={styles.workoutCount}>{workoutCount} logged</Text>
+          <Text style={styles.workoutCount}>{sessionCount} sessions</Text>
         </View>
 
         {lastWorkout ? (
           <>
             <Text style={styles.lastWorkout}>
-              Last logged workout • {new Date(lastWorkout.date).toLocaleDateString()}
+              Last PFA result • {new Date(lastWorkout.date).toLocaleDateString()}
             </Text>
 
             <View style={styles.statsRow}>
@@ -125,6 +140,7 @@ export default function HomeScreen() {
                 label={coreLabel(profile)}
               />
             </View>
+
             <View style={styles.statsRow}>
               <StatCard
                 value={lastWorkout.cardioResult || lastWorkout.hamr || '-'}
@@ -134,13 +150,22 @@ export default function HomeScreen() {
             </View>
           </>
         ) : (
-          <Text style={styles.noData}>Your progress dashboard will fill in as you train.</Text>
+          <View style={styles.emptyProgress}>
+            <Text style={styles.emptyProgressTitle}>Training plan is live</Text>
+            <Text style={styles.noData}>
+              Finish guided sessions and quick-log PFA results to build your progress history.
+            </Text>
+          </View>
         )}
+
+        <Text style={styles.logSummary}>
+          {workoutCount} PFA result{workoutCount === 1 ? '' : 's'} logged
+        </Text>
       </View>
 
       <View style={styles.actionRow}>
         <Pressable style={styles.secondaryButton} onPress={() => router.push('/log-workout')}>
-          <Text style={styles.secondaryButtonText}>Log Workout</Text>
+          <Text style={styles.secondaryButtonText}>Quick Log PFA</Text>
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={() => router.push('/workout-history')}>
           <Text style={styles.secondaryButtonText}>History</Text>
@@ -170,6 +195,7 @@ function TodayWorkoutCard({ workout }: { workout: PlannedWorkout | null }) {
           <Text style={styles.cardEyebrow}>TODAY'S WORKOUT</Text>
           <Text style={styles.todayTitle}>{workout.title}</Text>
         </View>
+
         <View style={workout.type === 'pfa' ? styles.pfaBadge : styles.strengthBadge}>
           <Text style={workout.type === 'pfa' ? styles.pfaBadgeText : styles.strengthBadgeText}>
             {workout.type === 'pfa' ? (workout.isMock ? 'MOCK' : 'PFA') : 'STRENGTH'}
@@ -205,8 +231,8 @@ function TodayWorkoutCard({ workout }: { workout: PlannedWorkout | null }) {
         </View>
       )}
 
-      <Pressable style={styles.startButton} onPress={() => router.push('/log-workout')}>
-        <Text style={styles.startButtonText}>Start Today's Workout</Text>
+      <Pressable style={styles.startButton} onPress={() => router.push('/active-workout')}>
+        <Text style={styles.startButtonText}>Start Today’s Workout</Text>
       </Pressable>
     </View>
   );
@@ -225,13 +251,16 @@ function getDaysUntil(value: string) {
   const target = new Date(`${value}T12:00:00`);
   const today = new Date();
   today.setHours(12, 0, 0, 0);
-
   return Math.max(0, Math.ceil((target.getTime() - today.getTime()) / 86_400_000));
 }
 
 function formatDate(value: string) {
   const date = new Date(`${value}T12:00:00`);
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function strengthLabel(profile: UserProfile) {
@@ -521,10 +550,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
+  emptyProgress: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyProgressTitle: {
+    color: '#2A382F',
+    fontSize: 17,
+    fontWeight: '900',
+  },
   noData: {
     color: '#69766E',
-    paddingVertical: 22,
+    marginTop: 5,
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  logSummary: {
+    color: '#718078',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
   },
   actionRow: {
     width: '100%',
