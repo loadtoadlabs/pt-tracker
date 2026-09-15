@@ -11,34 +11,22 @@ import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { loadUserProfile } from '@/lib/profile-storage';
+import { buildPlannedWorkout } from '@/lib/training-program';
 import { formatTrainingDay, getTodayTrainingDay } from '@/lib/training-schedule';
 import type { UserProfile } from '@/types/profile';
+import type { PlannedWorkout } from '@/types/training';
 
 type Workout = {
   id: number;
   date: string;
-  pushUps: string;
-  plank: string;
-  hamr: string;
-  weight: string;
-  notes: string;
-};
-
-const CARDIO_LABELS = {
-  hamr: '20m HAMR',
-  'two-mile-run': '2-Mile Run',
-  'two-km-walk': '2 km Walk',
-};
-
-const STRENGTH_LABELS = {
-  'push-ups': 'Push-Ups',
-  'hand-release-push-ups': 'Hand-Release Push-Ups',
-};
-
-const CORE_LABELS = {
-  plank: 'Forearm Plank',
-  'sit-ups': 'Sit-Ups',
-  'cross-leg-reverse-crunch': 'Cross-Leg Reverse Crunch',
+  strengthResult?: string;
+  coreResult?: string;
+  cardioResult?: string;
+  pushUps?: string;
+  plank?: string;
+  hamr?: string;
+  weight?: string;
+  notes?: string;
 };
 
 export default function HomeScreen() {
@@ -88,6 +76,7 @@ export default function HomeScreen() {
   }
 
   const today = getTodayTrainingDay(profile.trainingDays);
+  const workout = today ? buildPlannedWorkout(profile, today) : null;
   const daysRemaining = getDaysUntil(profile.testDate);
 
   return (
@@ -110,41 +99,7 @@ export default function HomeScreen() {
         <Text style={styles.testDate}>{formatDate(profile.testDate)}</Text>
       </View>
 
-      <View style={styles.todayCard}>
-        <View style={styles.todayCardHeader}>
-          <View>
-            <Text style={styles.cardEyebrow}>TODAY'S WORKOUT</Text>
-            <Text style={styles.todayTitle}>
-              {today ? (today.type === 'pfa' ? 'PFA Focus' : 'Strength Support') : 'Recovery Day'}
-            </Text>
-          </View>
-          {today && (
-            <View style={today.type === 'pfa' ? styles.pfaBadge : styles.strengthBadge}>
-              <Text style={today.type === 'pfa' ? styles.pfaBadgeText : styles.strengthBadgeText}>
-                {today.type === 'pfa' ? 'PFA' : 'STRENGTH'}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {today ? (
-          <>
-            <Text style={styles.todayDescription}>
-              {today.type === 'pfa'
-                ? `${CARDIO_LABELS[profile.cardioComponent as keyof typeof CARDIO_LABELS]} • ${STRENGTH_LABELS[profile.strengthComponent as keyof typeof STRENGTH_LABELS]} • ${CORE_LABELS[profile.coreComponent as keyof typeof CORE_LABELS]}`
-                : 'Build the strength, durability, and trunk control that support your selected PFA path.'}
-            </Text>
-            <Text style={styles.scheduleNote}>{formatTrainingDay(today.day)} training session</Text>
-            <Pressable style={styles.startButton} onPress={() => router.push('/log-workout')}>
-              <Text style={styles.startButtonText}>Start Today's Workout</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Text style={styles.todayDescription}>
-            No scheduled training today. Recover, move a little, and come back ready for the next session.
-          </Text>
-        )}
-      </View>
+      <TodayWorkoutCard workout={workout} />
 
       <Text style={styles.sectionTitle}>Progress</Text>
 
@@ -161,12 +116,21 @@ export default function HomeScreen() {
             </Text>
 
             <View style={styles.statsRow}>
-              <StatCard value={lastWorkout.pushUps || '-'} label="Push-Ups" />
-              <StatCard value={lastWorkout.plank || '-'} label="Plank" />
+              <StatCard
+                value={lastWorkout.strengthResult || lastWorkout.pushUps || '-'}
+                label={strengthLabel(profile)}
+              />
+              <StatCard
+                value={lastWorkout.coreResult || lastWorkout.plank || '-'}
+                label={coreLabel(profile)}
+              />
             </View>
             <View style={styles.statsRow}>
-              <StatCard value={lastWorkout.hamr || '-'} label="HAMR" />
-              <StatCard value={lastWorkout.weight ? `${lastWorkout.weight}` : '-'} label="Weight" />
+              <StatCard
+                value={lastWorkout.cardioResult || lastWorkout.hamr || '-'}
+                label={cardioLabel(profile)}
+              />
+              <StatCard value={phaseLabel(workout?.phase)} label="Training Phase" />
             </View>
           </>
         ) : (
@@ -183,6 +147,68 @@ export default function HomeScreen() {
         </Pressable>
       </View>
     </ScrollView>
+  );
+}
+
+function TodayWorkoutCard({ workout }: { workout: PlannedWorkout | null }) {
+  if (!workout) {
+    return (
+      <View style={styles.todayCard}>
+        <Text style={styles.cardEyebrow}>TODAY'S WORKOUT</Text>
+        <Text style={styles.todayTitle}>Recovery Day</Text>
+        <Text style={styles.todayDescription}>
+          No scheduled training today. Keep movement easy, recover, and come back ready for the next session.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.todayCard}>
+      <View style={styles.todayCardHeader}>
+        <View style={styles.titleColumn}>
+          <Text style={styles.cardEyebrow}>TODAY'S WORKOUT</Text>
+          <Text style={styles.todayTitle}>{workout.title}</Text>
+        </View>
+        <View style={workout.type === 'pfa' ? styles.pfaBadge : styles.strengthBadge}>
+          <Text style={workout.type === 'pfa' ? styles.pfaBadgeText : styles.strengthBadgeText}>
+            {workout.type === 'pfa' ? (workout.isMock ? 'MOCK' : 'PFA') : 'STRENGTH'}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.todayDescription}>{workout.subtitle}</Text>
+
+      <View style={styles.metaRow}>
+        <Text style={styles.metaPill}>{formatTrainingDay(workout.day)}</Text>
+        <Text style={styles.metaPill}>{phaseLabel(workout.phase)}</Text>
+        <Text style={styles.metaPill}>~{workout.estimatedMinutes} min</Text>
+      </View>
+
+      <View style={styles.previewList}>
+        {workout.blocks.slice(0, 4).map((block, index) => (
+          <View key={block.id} style={styles.previewRow}>
+            <View style={styles.stepCircle}>
+              <Text style={styles.stepCircleText}>{index + 1}</Text>
+            </View>
+            <View style={styles.previewCopy}>
+              <Text style={styles.previewTitle}>{block.title}</Text>
+              <Text style={styles.previewPrescription}>{block.prescription}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {workout.guardrails[0] && (
+        <View style={styles.guardrailBox}>
+          <Text style={styles.guardrailText}>{workout.guardrails[0]}</Text>
+        </View>
+      )}
+
+      <Pressable style={styles.startButton} onPress={() => router.push('/log-workout')}>
+        <Text style={styles.startButtonText}>Start Today's Workout</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -206,6 +232,32 @@ function getDaysUntil(value: string) {
 function formatDate(value: string) {
   const date = new Date(`${value}T12:00:00`);
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function strengthLabel(profile: UserProfile) {
+  return profile.strengthComponent === 'hand-release-push-ups'
+    ? 'Hand-Release Push-Ups'
+    : 'Push-Ups';
+}
+
+function coreLabel(profile: UserProfile) {
+  if (profile.coreComponent === 'sit-ups') return 'Sit-Ups';
+  if (profile.coreComponent === 'cross-leg-reverse-crunch') return 'Cross-Leg Reverse Crunch';
+  return 'Plank';
+}
+
+function cardioLabel(profile: UserProfile) {
+  if (profile.cardioComponent === 'two-mile-run') return '2-Mile Run';
+  if (profile.cardioComponent === 'two-km-walk') return '2 km Walk';
+  return 'HAMR';
+}
+
+function phaseLabel(phase?: PlannedWorkout['phase']) {
+  if (phase === 'foundation') return 'Foundation';
+  if (phase === 'build') return 'Build';
+  if (phase === 'sharpen') return 'Sharpen';
+  if (phase === 'taper') return 'Taper';
+  return '-';
 }
 
 const styles = StyleSheet.create({
@@ -292,6 +344,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
   },
+  titleColumn: {
+    flex: 1,
+  },
   cardEyebrow: {
     fontSize: 11,
     letterSpacing: 1.3,
@@ -299,7 +354,7 @@ const styles = StyleSheet.create({
     color: '#718078',
   },
   todayTitle: {
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: '900',
     color: '#18221D',
     marginTop: 4,
@@ -330,12 +385,69 @@ const styles = StyleSheet.create({
     color: '#56645C',
     fontSize: 16,
     lineHeight: 23,
+    marginTop: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 14,
   },
-  scheduleNote: {
-    color: '#7A857E',
-    marginTop: 10,
-    fontWeight: '600',
+  metaPill: {
+    backgroundColor: '#F0F4F1',
+    color: '#536158',
+    fontWeight: '800',
+    fontSize: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 99,
+  },
+  previewList: {
+    marginTop: 18,
+    gap: 14,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    gap: 11,
+    alignItems: 'flex-start',
+  },
+  stepCircle: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: '#E5F1E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleText: {
+    color: '#236B46',
+    fontWeight: '900',
+    fontSize: 12,
+  },
+  previewCopy: {
+    flex: 1,
+  },
+  previewTitle: {
+    color: '#26332C',
+    fontWeight: '900',
+  },
+  previewPrescription: {
+    color: '#657169',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  guardrailBox: {
+    backgroundColor: '#FFF8E6',
+    borderRadius: 10,
+    padding: 11,
+    marginTop: 16,
+  },
+  guardrailText: {
+    color: '#6E5B28',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
   },
   startButton: {
     backgroundColor: '#2E8B57',
@@ -407,6 +519,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6D7972',
     marginTop: 4,
+    textAlign: 'center',
   },
   noData: {
     color: '#69766E',
