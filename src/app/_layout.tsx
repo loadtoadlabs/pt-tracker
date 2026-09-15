@@ -18,6 +18,7 @@ export default function RootLayout() {
           name="setup"
           options={{ headerShown: false, gestureEnabled: false }}
         />
+        <Stack.Screen name="active-workout" options={{ title: 'Today’s Workout' }} />
         <Stack.Screen name="log-workout" options={{ title: 'Log Workout' }} />
         <Stack.Screen name="workout-history" options={{ title: 'Workout History' }} />
       </Stack>
