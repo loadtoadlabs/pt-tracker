@@ -126,6 +126,16 @@ function buildMock(
   scheduled: ScheduledTrainingDay,
   phase: TrainingPhase
 ): PlannedWorkout {
+  // A substituted event is training, not a comparable official-style test.
+  if (profile.movementRestrictions.includes('wrist-loading') ||
+      (avoidImpact(profile) && profile.cardioComponent !== 'two-km-walk')) {
+    return {
+      ...buildPfaQuality(profile, scheduled, phase),
+      title: 'Adapted PFA Practice',
+      subtitle: 'Use the listed substitutes for your saved restrictions. This session is not a mock PFA result.',
+    };
+  }
+
   return {
     ...baseWorkout(scheduled, phase),
     title: 'Mock PFA',
@@ -226,12 +236,14 @@ function buildStrengthB(
         id: 'press',
         title: pressExercise(profile),
         prescription: `${volume} sets × 8–12 reps. Stop 2–3 reps before failure.`,
+        coaching: 'Keep the wrist comfortable. Unresisted movement is a limited practice substitute, not equivalent to loaded strength work.',
         purpose: `Build strength that transfers to ${strengthLabel(profile)} without maxing out daily.`,
       },
       {
         id: 'pull',
         title: pullExercise(profile),
         prescription: `${volume} sets × 8–15 controlled reps.`,
+        coaching: 'Unresisted scapular work supports shoulder control but does not replace loaded pulling strength.',
         purpose: 'Balance pressing volume and support shoulder positioning.',
       },
       {
@@ -368,6 +380,16 @@ function cardioQualityBlock(profile: UserProfile, phase: TrainingPhase): Workout
 }
 
 function strengthComponentBlock(profile: UserProfile, percent: number, sets: number): WorkoutBlock {
+  if (profile.movementRestrictions.includes('wrist-loading')) {
+    return {
+      id: 'pfa-strength',
+      title: pressExercise(profile),
+      prescription: `${sets} sets × 8–12 controlled reps. Stop 2–3 reps before failure.`,
+      coaching: 'Use a comfortable neutral wrist position. Do not use your push-up baseline for this substitute. Unresisted movement maintains practice only; it does not replace loaded strength work.',
+      purpose: 'Support pressing strength while substituting for wrist-loaded event practice.',
+    };
+  }
+
   const baseline = Number(profile.baseline.strengthReps);
   const reps = Number.isFinite(baseline) && baseline > 0
     ? Math.max(1, Math.floor(baseline * percent))
@@ -469,10 +491,21 @@ function mobilityBlock(profile: UserProfile): WorkoutBlock {
 }
 
 function trunkSupportBlock(profile: UserProfile, phase: TrainingPhase): WorkoutBlock {
-  if (profile.movementRestrictions.includes('spinal-loading')) {
+  if ((!hasGym(profile) && !profile.equipment.includes('resistance-bands')) ||
+      profile.movementRestrictions.includes('wrist-loading')) {
     return {
       id: 'trunk',
-      title: 'Pallof Press / Anti-Rotation',
+      title: 'Supine Alternating Heel Slides',
+      prescription: `${phase === 'taper' ? 2 : 3} sets × 8–12 controlled reps per side. Keep the trunk still while sliding one heel at a time.`,
+      coaching: 'Use a comfortable range without twisting, kneeling, or loading the wrists.',
+      purpose: 'Train trunk control without external equipment.',
+    };
+  }
+
+  if (profile.movementRestrictions.includes('spinal-loading') || profile.movementRestrictions.includes('hip-hinge')) {
+    return {
+      id: 'trunk',
+      title: 'Standing Pallof Press / Anti-Rotation',
       prescription: `${phase === 'taper' ? 2 : 3} sets × 8–12 controlled reps per side.`,
       purpose: 'Train trunk stiffness without heavy spinal loading.',
     };
@@ -480,8 +513,8 @@ function trunkSupportBlock(profile: UserProfile, phase: TrainingPhase): WorkoutB
 
   return {
     id: 'trunk',
-    title: 'Pallof Press + Optional Torture Twist',
-    prescription: `${phase === 'taper' ? 2 : 3} sets of Pallof press. If completely pain-free, finish with 1–2 controlled minimum-effective-dose rounds of Torture Twists.`,
+    title: 'Standing Pallof Press + Optional Torture Twist',
+    prescription: `${phase === 'taper' ? 2 : 3} sets of standing Pallof press. If completely pain-free, finish with 1–2 controlled minimum-effective-dose rounds of Torture Twists.`,
     coaching: 'The optional finisher is never worth aggravating the back. Skip it if position or comfort is questionable.',
     purpose: 'Build anti-rotation control with a small dose of targeted trunk work.',
   };
@@ -490,24 +523,27 @@ function trunkSupportBlock(profile: UserProfile, phase: TrainingPhase): WorkoutB
 function kneeDominantExercise(profile: UserProfile) {
   if (profile.movementRestrictions.includes('squat')) {
     if (hasGym(profile)) return 'Leg Press (pain-free range)';
-    if (!profile.movementRestrictions.includes('lunge')) return 'Supported Step-Up';
-    return 'Glute Bridge + Band Knee Extension';
+    return profile.equipment.includes('resistance-bands')
+      ? 'Seated Band Knee Extension'
+      : 'Seated Unresisted Knee Extension';
   }
 
-  if (hasGym(profile)) return 'Leg Press or Goblet Squat';
-  if (profile.equipment.includes('dumbbells')) return 'Goblet Squat';
+  if (hasGym(profile)) return 'Leg Press (pain-free range)';
+  if (profile.equipment.includes('dumbbells') &&
+      !profile.movementRestrictions.includes('spinal-loading') &&
+      !profile.movementRestrictions.includes('wrist-loading')) return 'Goblet Squat';
   return 'Controlled Bodyweight Squat';
 }
 
 function posteriorChainExercise(profile: UserProfile) {
   if (profile.movementRestrictions.includes('hip-hinge') || profile.movementRestrictions.includes('spinal-loading')) {
     if (hasGym(profile)) return 'Seated / Lying Leg Curl';
-    return 'Glute Bridge / Hip Thrust';
+    return 'Floor Glute Bridge';
   }
 
   if (hasGym(profile)) return 'Leg Curl or Romanian Deadlift';
-  if (profile.equipment.includes('dumbbells')) return 'Dumbbell Romanian Deadlift';
-  return 'Glute Bridge / Hip Thrust';
+  if (profile.equipment.includes('dumbbells') && !profile.movementRestrictions.includes('wrist-loading')) return 'Dumbbell Romanian Deadlift';
+  return 'Floor Glute Bridge';
 }
 
 function calfExercise(profile: UserProfile) {
@@ -517,8 +553,10 @@ function calfExercise(profile: UserProfile) {
 
 function pressExercise(profile: UserProfile) {
   if (profile.movementRestrictions.includes('wrist-loading')) {
-    if (hasGym(profile)) return 'Machine Chest Press';
-    if (profile.equipment.includes('resistance-bands')) return 'Band Chest Press';
+    if (hasGym(profile)) return 'Neutral-Grip Machine Chest Press';
+    if (profile.equipment.includes('dumbbells')) return 'Neutral-Grip Dumbbell Floor Press';
+    if (profile.equipment.includes('resistance-bands')) return 'Neutral-Grip Band Chest Press';
+    return 'Unresisted Standing Chest Press';
   }
 
   if (hasGym(profile)) return 'Bench Press / Machine Chest Press';
@@ -529,16 +567,20 @@ function pressExercise(profile: UserProfile) {
 }
 
 function pullExercise(profile: UserProfile) {
-  if (hasGym(profile)) return 'Lat Pulldown or Cable Row';
-  if (profile.equipment.includes('dumbbells')) return 'One-Arm Dumbbell Row';
-  if (profile.equipment.includes('resistance-bands')) return 'Band Row';
-  return 'Bodyweight Scapular Pull / Towel Row Variation';
+  if (hasGym(profile)) return 'Seated Neutral-Grip Cable Row';
+  if (profile.equipment.includes('resistance-bands')) return 'Seated Neutral-Grip Band Row';
+  if (profile.equipment.includes('dumbbells') &&
+      !profile.movementRestrictions.includes('hip-hinge') &&
+      !profile.movementRestrictions.includes('spinal-loading') &&
+      !profile.movementRestrictions.includes('kneel')) return 'Standing Neutral-Grip Dumbbell Row';
+  return 'Standing Unresisted Scapular Retraction';
 }
 
 function secondaryLowerExercise(profile: UserProfile) {
-  if (profile.movementRestrictions.includes('lunge')) return posteriorChainExercise(profile);
+  if (profile.movementRestrictions.includes('lunge') || profile.movementRestrictions.includes('squat')) return posteriorChainExercise(profile);
+  if (profile.movementRestrictions.includes('kneel')) return 'Standing Reverse Lunge — Keep Knee Above Floor';
   if (hasGym(profile)) return 'Supported Split Squat or Step-Up';
-  return 'Supported Reverse Lunge or Step-Up';
+  return 'Standing Reverse Lunge';
 }
 
 function lowImpactIntervalBlock(profile: UserProfile, reps: number): WorkoutBlock {
@@ -564,8 +606,12 @@ function lowImpactFourMinuteBlock(profile: UserProfile, intervals: number): Work
 function lowImpactModality(profile: UserProfile) {
   if (profile.equipment.includes('bike')) return 'bike';
   if (profile.equipment.includes('elliptical')) return 'elliptical';
-  if (profile.equipment.includes('rower')) return 'rower';
-  if (profile.equipment.includes('stair-climber')) return 'stair climber';
+  if (profile.equipment.includes('rower') &&
+      !profile.movementRestrictions.some((restriction) =>
+        ['hip-hinge', 'spinal-loading', 'squat', 'wrist-loading'].includes(restriction))) return 'rower';
+  if (profile.equipment.includes('stair-climber') &&
+      !profile.movementRestrictions.includes('squat') &&
+      !profile.movementRestrictions.includes('lunge')) return 'stair climber';
   return 'brisk walk';
 }
 
